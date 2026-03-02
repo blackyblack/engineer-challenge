@@ -1,6 +1,7 @@
 import { Email, UserRepository } from '../../domain/identity';
 import { ResetToken, ResetTokenRepository, ResetPolicy, ResetRateLimitExceededError } from '../../domain/password-recovery';
 import { Logger } from '../../infrastructure/observability/logger';
+import { PASSWORD_RESET_RESPONSE_MESSAGE } from '../../constants';
 
 /**
  * RequestPasswordReset Command
@@ -40,8 +41,7 @@ export class RequestPasswordResetHandler {
     if (!user) {
       this.logger.info('Password reset requested for non-existent email', { email: command.email });
       return {
-        // TODO: move to constants - we critically want to ensure this message is identical to the success case to prevent enumeration attacks
-        message: 'Reset link has been sent',
+        message: PASSWORD_RESET_RESPONSE_MESSAGE,
       };
     }
 
@@ -67,7 +67,7 @@ export class RequestPasswordResetHandler {
     // and deliver it to the user's verified email address.
 
     return {
-      message: 'Reset link has been sent',
+      message: PASSWORD_RESET_RESPONSE_MESSAGE,
     };
   }
 }

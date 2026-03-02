@@ -38,7 +38,7 @@ services:
       postgres:
         condition: service_healthy
 
-  # Prometheus (metrics collection)
+  # Metrics
   prometheus:
     image: prom/prometheus:v2.48.0
     volumes:

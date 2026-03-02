@@ -5,6 +5,7 @@ import { AuthenticateUserHandler } from '../../src/application/commands/authenti
 import { PgUserRepository } from '../../src/infrastructure/persistence/pg-user-repository';
 import { PgResetTokenRepository } from '../../src/infrastructure/persistence/pg-reset-token-repository';
 import { InMemoryResetPolicy } from '../../src/infrastructure/rate-limiting/reset-policy';
+import { InMemoryLoginPolicy } from '../../src/infrastructure/rate-limiting/login-policy';
 import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/argon2-password-hasher';
 import { JwtTokenProvider } from '../../src/infrastructure/crypto/jwt-token-provider';
 import { ResetTokenNotFoundError } from '../../src/domain/password-recovery';
@@ -62,7 +63,11 @@ describe('Password Recovery Flow', () => {
     });
 
     registerHandler = new RegisterUserHandler(userRepository, passwordHasher, mockLogger);
-    authHandler = new AuthenticateUserHandler(userRepository, passwordHasher, tokenService, mockLogger);
+    authHandler = new AuthenticateUserHandler(userRepository, passwordHasher, tokenService, new InMemoryLoginPolicy({
+      maxRequests: 10,
+      windowMs: 15 * 60 * 1000,
+      cooldownMs: 0,
+    }), mockLogger);
     requestResetHandler = new RequestPasswordResetHandler(
       userRepository, resetTokenRepository, resetPolicy, mockLogger,
     );
@@ -109,6 +114,7 @@ describe('Password Recovery Flow', () => {
     const authResult = await authHandler.execute({
       email: 'user@example.com',
       password: 'NewPass1!',
+      ip: '127.0.0.1',
     });
     expect(authResult.accessToken).toBeDefined();
   });

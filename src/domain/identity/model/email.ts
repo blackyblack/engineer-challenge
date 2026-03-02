@@ -1,3 +1,5 @@
+import isEmail from 'validator/lib/isEmail';
+
 /**
  * Email Model
  *
@@ -16,11 +18,8 @@ export class Email {
     return new Email(normalized);
   }
 
-  // TODO: use library like validator.js for more robust email validation
-
   static isValid(email: string): boolean {
-    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return pattern.test(email);
+    return isEmail(email);
   }
 
   equals(other: Email): boolean {

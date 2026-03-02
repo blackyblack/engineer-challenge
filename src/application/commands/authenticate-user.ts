@@ -1,20 +1,21 @@
 import { Email, UserRepository } from '../../domain/identity';
-import { PasswordHasher, TokenService, AuthTokenPair } from '../../domain/authentication';
+import { PasswordHasher, TokenService, AuthTokenPair, LoginPolicy, UserAuthenticated, AuthenticationFailed } from '../../domain/authentication';
 import { Logger } from '../../infrastructure/observability/logger';
 
 /**
  * AuthenticateUser Command
  *
  * Orchestrates the login flow:
- * 1. Find user by email
- * 2. Verify user is active (not locked)
+ * 1. Check IP-based rate limit
+ * 2. Find user by email
  * 3. Verify password
- * 4. Reset failed attempts on success / increment on failure
- * 5. Issue token pair
+ * 4. Record failed attempt by IP on failure
+ * 5. Issue token pair on success
  */
 export interface AuthenticateUserCommand {
   email: string;
   password: string;
+  ip: string;
 }
 
 export class InvalidCredentialsError extends Error {
@@ -29,45 +30,43 @@ export class AuthenticateUserHandler {
     private readonly userRepository: UserRepository,
     private readonly passwordHasher: PasswordHasher,
     private readonly tokenService: TokenService,
+    private readonly loginPolicy: LoginPolicy,
     private readonly logger: Logger,
   ) {}
 
   async execute(command: AuthenticateUserCommand): Promise<AuthTokenPair> {
     this.logger.info('Processing AuthenticateUser command', { email: command.email });
 
+    const canAttempt = await this.loginPolicy.canAttemptLogin(command.ip);
+    if (!canAttempt) {
+      this.logger.warn('Login rate limit exceeded', { ip: command.ip });
+      throw new InvalidCredentialsError();
+    }
+
     const email = Email.create(command.email);
     const user = await this.userRepository.findByEmail(email);
 
     if (!user) {
+      await this.loginPolicy.recordFailedLogin(command.ip);
       this.logger.warn('Authentication failed: user not found', { email: command.email });
-      throw new InvalidCredentialsError();
-    }
-
-    if (!user.isActive()) {
-      this.logger.warn('Authentication failed: user not active', { userId: user.id, status: user.status });
       throw new InvalidCredentialsError();
     }
 
     const passwordValid = await this.passwordHasher.compare(command.password, user.passwordHash);
 
-    // TODO: we should not lock user by email, since attacker could use this to lock out users.
-    // Instead, consider tracking failed attempts by IP or using a more sophisticated approach like CAPTCHA after certain failures.
-
     if (!passwordValid) {
-      user.recordFailedLogin();
-      await this.userRepository.save(user);
-      this.logger.warn('Authentication failed: invalid password', { userId: user.id, attempts: user.failedLoginAttempts });
+      await this.loginPolicy.recordFailedLogin(command.ip);
+      user.domainEvents.push(new AuthenticationFailed(user.id, 'Invalid password', new Date()));
+      this.logger.warn('Authentication failed: invalid password', { userId: user.id, ip: command.ip });
       throw new InvalidCredentialsError();
     }
-
-    user.resetFailedLoginAttempts();
-    await this.userRepository.save(user);
 
     const tokenPair = await this.tokenService.issueTokenPair({
       userId: user.id,
       email: user.email.value,
     });
 
+    user.domainEvents.push(new UserAuthenticated(user.id, new Date()));
     this.logger.info('User authenticated successfully', { userId: user.id });
 
     return tokenPair;

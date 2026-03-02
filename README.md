@@ -37,7 +37,7 @@ docker compose up --build
 ## Выбор стека и аргументация
 
 **TypeScript**: Строгая типизация, простое тестирование через моки, большой выбор библиотек, быстрый старт. Альтернативы:
-Go (меньше выразительности для DDD), Rust (тяжело быстро собрать прототип, сложнее тестирование)
+Go (меньше выразительности для DDD, слабая экосистема), Rust (тяжело быстро собрать прототип, сложнее тестирование)
 
 **gRPC**: Строго типизированный контракт (proto), эффективная сериализация. Альтернативы: REST (менее строгий контракт, не рекомендован в ТЗ), GraphQL (не нужен для авторизации)
 
@@ -59,22 +59,23 @@ Go (меньше выразительности для DDD), Rust (тяжело 
 
 ```mermaid
 graph TB
-    subgraph "Identity Context"
-        User["User (Aggregate Root)"]
-        Email["Email (Value Object)"]
-        Password["Password (Value Object)"]
+    subgraph "Identity"
+        User["User"]
+        Email["Email"]
+        Password["Password"]
         User --> Email
         User --> Password
     end
 
-    subgraph "Authentication Context"
-        AuthToken["AuthTokenPair (Value Object)"]
+    subgraph "Authentication"
+        AuthToken["AuthTokenPair"]
         TokenService["TokenService (Port)"]
         PasswordHasher["PasswordHasher (Port)"]
+        LoginPolicy["LoginPolicy (Port)"]
     end
 
-    subgraph "Password Recovery Context"
-        ResetToken["ResetToken (Entity)"]
+    subgraph "Password Recovery"
+        ResetToken["ResetToken"]
         ResetPolicy["ResetPolicy (Port)"]
         ResetTokenRepo["ResetTokenRepository (Port)"]
     end
@@ -83,7 +84,7 @@ graph TB
     User -.->|referenced by| ResetToken
 ```
 
-### CQRS — Command и Query Side
+### CQRS
 
 ```mermaid
 graph LR
@@ -99,14 +100,16 @@ graph LR
     end
 
     subgraph "Domain"
-        U[User Aggregate]
+        U[User]
         RT[ResetToken]
         TS[TokenService]
+        LP[LoginPolicy]
     end
 
     RC --> U
     AC --> U
     AC --> TS
+    AC --> LP
     RPC --> RT
     RSC --> U
     RSC --> RT
@@ -115,39 +118,39 @@ graph LR
 
 **Command handlers**:
 - `RegisterUserHandler` — валидация, хеширование, создание User aggregate
-- `AuthenticateUserHandler` — проверка логина/пароля, выдача токенов, учёт попыток
-- `RequestPasswordResetHandler` — генерация reset token, rate limiting
+- `AuthenticateUserHandler` — проверка логина/пароля, IP-based rate limiting, выдача токенов
+- `RequestPasswordResetHandler` — генерация reset токена, rate limiting
 - `ResetPasswordHandler` — валидация токена, смена пароля
 
 **Query handlers**:
-- `ValidateSessionHandler` — проверка access token
+- `ValidateSessionHandler` — проверка access токена
 
 ### Слои архитектуры
 
 ```
 src/
 ├── domain/                      # Чистый домен (нет зависимостей от инфраструктуры)
-│   ├── identity/                # Bounded Context: Identity
-│   │   ├── model/               # User aggregate, Email/Password value objects
-│   │   ├── repository/          # Port: UserRepository interface
-│   │   └── events/              # Domain events: UserRegistered, UserLocked
-│   ├── authentication/          # Bounded Context: Authentication
-│   │   ├── model/               # AuthTokenPair value object
-│   │   ├── service/             # Ports: TokenService, PasswordHasher
+│   ├── identity/                # Identity слой (Регистрация)
+│   │   ├── model/               # User, Email, Password Models
+│   │   ├── repository/          # Port: UserRepository
+│   │   └── events/              # Domain events: UserRegistered
+│   ├── authentication/          # Authentication слой (Логин)
+│   │   ├── model/               # AuthTokenPair Model
+│   │   ├── service/             # Ports: TokenService, PasswordHasher, LoginPolicy
 │   │   └── events/              # Domain events: UserAuthenticated
-│   └── password-recovery/       # Bounded Context: Password Recovery
-│       ├── model/               # ResetToken entity
+│   └── password-recovery/       # Слой Восстановление пароля
+│       ├── model/               # ResetToken Model
 │       ├── repository/          # Port: ResetTokenRepository
 │       └── service/             # Port: ResetPolicy
-├── application/                 # Application layer
-│   ├── commands/                # Command handlers (write side)
-│   └── queries/                 # Query handlers (read side)
+├── application/                 # Application слой
+│   ├── commands/                # Command handlers (для записи)
+│   └── queries/                 # Query handlers (для чтения)
 ├── infrastructure/              # Adapters
 │   ├── crypto/                  # Argon2PasswordHasher, JwtTokenProvider
-│   ├── persistence/             # PostgreSQL repositories
-│   ├── grpc/                    # gRPC server
-│   ├── observability/           # Pino logger, Prometheus metrics
-│   └── rate-limiting/           # InMemoryRateLimiter
+│   ├── persistence/             # PostgreSQL хранилище
+│   ├── grpc/                    # gRPC сервер
+│   ├── observability/           # Pino логгер, Prometheus (метрики)
+│   └── rate-limiting/           # InMemoryRateLimiter, InMemoryLoginPolicy
 ```
 
 ## Ключевые инварианты и бизнес-правила
@@ -157,11 +160,10 @@ src/
 - Обязательно: uppercase, lowercase, цифра, спецсимвол
 - Хранится только хеш
 
-### User Aggregate
+### User Model
 - Email уникален
-- Статусы: `ACTIVE` -> `LOCKED`
-- После 5 неудачных попыток входа — автоматическая блокировка (`LOCKED`)
-- Успешная авторизация сбрасывает счётчик неудачных попыток
+- Блокировка по IP: при превышении лимита попыток (10 за 15 мин) IP блокируется
+- IP-based rate limiting предотвращает блокировку легитимных пользователей злоумышленниками
 
 ### Reset Token
 - Криптографически безопасный (32 байта)
@@ -216,7 +218,6 @@ npm run test:integration
 
 Система генерирует доменные события:
 - `UserRegistered` — при успешной регистрации
-- `UserLocked` — при блокировке из-за brute force
 - `UserAuthenticated` — при успешном входе
 - `AuthenticationFailed` — при неудачной попытке
 - `PasswordResetRequested` — при запросе сброса
@@ -229,12 +230,14 @@ npm run test:integration
 1. In-memory rate limiter
 2. Testcontainers для тестов
 3. JWT без блеклистинга
+4. Нет долгосрочной блокировки пользователей
 
 ## Следующие шаги для будущей версии
 
-1. **Email-сервис** — отправка reset-ссылок через email
-2. **CI/CD** — автоматические тесты, сканирование уязвимостей, деплой
-3. **Redis rate limiter** — рейт лимит с помощью Redis для поддержки масштабирования
-4. **Token blacklist** — поддержка logout пользователя
-5. **Refresh token rotation** — ротация refresh токена при каждом использовании
-6. **Account recovery** — дополнительные методы верификации (SMS, TOTP)
+1. **Linter, Formatter, Typecheck** - проверка кода и стандартное форматирование
+2. **Email-сервис** — отправка reset-ссылок по почте
+3. **CI/CD** — автоматические тесты, сканирование уязвимостей, деплой
+4. **Redis rate limiter** — рейт лимит с помощью Redis для поддержки масштабирования
+5. **Token blacklist** — поддержка logout пользователя
+6. **Refresh token rotation** — ротация refresh токена при каждом использовании
+7. **Account recovery** — дополнительные методы верификации (SMS, TOTP)

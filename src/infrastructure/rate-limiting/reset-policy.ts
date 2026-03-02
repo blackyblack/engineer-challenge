@@ -1,25 +1,17 @@
 import { ResetPolicy } from '../../domain/password-recovery/service/reset-policy';
 import { InMemoryRateLimiter, RateLimiterConfig } from './rate-limiter';
+import { RESET_RATE_LIMITER_CONFIG } from '../../constants';
 
 /**
  * In-Memory Reset Policy implementation
- *
- * Uses rate limiter to enforce reset request limits:
- * - Max 3 requests per hour
- * - 60 second cooldown between requests
+ * 
+ * Uses rate limiter to enforce password reset request limits by user ID
  */
 export class InMemoryResetPolicy implements ResetPolicy {
   private readonly rateLimiter: InMemoryRateLimiter;
 
   constructor(config?: RateLimiterConfig) {
-    this.rateLimiter = new InMemoryRateLimiter(
-      config || {
-        // TODO: move to constants
-        maxRequests: 3,
-        windowMs: 60 * 60 * 1000, // 1 hour
-        cooldownMs: 60 * 1000, // 60 seconds
-      },
-    );
+    this.rateLimiter = new InMemoryRateLimiter(config || RESET_RATE_LIMITER_CONFIG);
   }
 
   async canRequestReset(userId: string): Promise<boolean> {
