@@ -5,7 +5,7 @@ import { AuthenticateUserHandler } from '../../src/application/commands/authenti
 import { PgUserRepository } from '../../src/infrastructure/persistence/pg-user-repository';
 import { PgResetTokenRepository } from '../../src/infrastructure/persistence/pg-reset-token-repository';
 import { InMemoryResetPolicy } from '../../src/infrastructure/persistence/in-memory-reset-policy';
-import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/bcrypt-password-hasher';
+import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/argon2-password-hasher';
 import { JwtTokenProvider } from '../../src/infrastructure/crypto/jwt-token-provider';
 import { ResetTokenNotFoundError, ResetRateLimitExceededError } from '../../src/domain/password-recovery';
 import { WeakPasswordError } from '../../src/domain/identity';

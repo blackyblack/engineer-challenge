@@ -1,6 +1,6 @@
 import { RegisterUserHandler } from '../../src/application/commands/register-user';
 import { PgUserRepository } from '../../src/infrastructure/persistence/pg-user-repository';
-import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/bcrypt-password-hasher';
+import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/argon2-password-hasher';
 import { DuplicateEmailError, InvalidEmailError, WeakPasswordError } from '../../src/domain/identity';
 import { Logger } from '../../src/infrastructure/observability/logger';
 import { Pool } from 'pg';

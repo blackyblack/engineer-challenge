@@ -1,5 +1,5 @@
 import { JwtTokenProvider } from '../../src/infrastructure/crypto/jwt-token-provider';
-import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/bcrypt-password-hasher';
+import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/argon2-password-hasher';
 import { InvalidTokenError } from '../../src/domain/authentication';
 
 describe('JWT Token Provider (jose)', () => {
