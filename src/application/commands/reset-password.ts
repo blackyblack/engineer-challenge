@@ -42,23 +42,27 @@ export class ResetPasswordHandler {
     if (resetToken.isExpired()) {
       throw new ResetTokenExpiredError(resetToken.id);
     }
-    resetToken.markUsed();
 
     // Validate the password - throws on failure
     Password.create(command.newPassword);
 
     const newHash = await this.passwordHasher.hash(command.newPassword);
 
-    // TODO: consider doing this in a transaction to ensure atomicity
-    
     const user = await this.userRepository.findById(resetToken.userId);
     if (!user) {
       throw new UserNotFoundError(resetToken.userId);
     }
+
+    // Mark the token as used and persist it before changing the password.
+    // This ensures we never end up with a changed password and a still-valid token
+    // even if persisting the user fails.
+    // NOTE: order is important here - we should mark the token as used before updating the password.
+    // Alternatively, use a transaction to ensure atomicity.
+    resetToken.markUsed();
+    await this.resetTokenRepository.save(resetToken);
+
     user.changePassword(newHash);
     await this.userRepository.save(user);
-
-    await this.resetTokenRepository.save(resetToken);
 
     this.logger.info('Password reset completed', { userId: user.id });
   }

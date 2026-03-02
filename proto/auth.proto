@@ -67,7 +67,6 @@ message ValidateSessionRequest {
 }
 
 message ValidateSessionResponse {
-  bool valid = 1;
-  string user_id = 2;
-  string email = 3;
+  string user_id = 1;
+  string email = 2;
 }

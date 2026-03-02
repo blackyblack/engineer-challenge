@@ -6,10 +6,12 @@ export class PgResetTokenRepository implements ResetTokenRepository {
     constructor(private readonly pool: Pool) { }
 
     async save(resetToken: ResetToken): Promise<void> {
+        // UPSERTS should be used to handle both new tokens and updates (marking as used)
         await this.pool.query(
             `INSERT INTO reset_tokens (id, user_id, token, expires_at, used, created_at)
             VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (id) DO NOTHING`,
+            ON CONFLICT (id) DO UPDATE SET
+              used = EXCLUDED.used`,
             [resetToken.id, resetToken.userId, resetToken.token, resetToken.expiresAt, resetToken.used, resetToken.createdAt],
         );
     }

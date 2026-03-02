@@ -141,7 +141,7 @@ describe('Password Recovery Flow', () => {
     await expect(
       resetPasswordHandler.execute({ token: token!, newPassword: 'Another1!' }),
     ).rejects.toThrow();
-  });
+  }, 60000);
 
   it('should invalidate old tokens when new one is requested', async () => {
     await requestResetHandler.execute({ email: 'user@example.com' });

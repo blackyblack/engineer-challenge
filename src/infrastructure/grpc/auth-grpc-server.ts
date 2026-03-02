@@ -98,7 +98,7 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
         const result = await deps.registerHandler.execute({ email, password });
         authMetrics.registrationTotal.inc({ status: 'success' });
         timer({ status: 'success' });
-        callback({ code: grpc.status.OK, userId: result.userId, email: result.email });
+        callback(null, { userId: result.userId, email: result.email });
       } catch (error) {
         authMetrics.registrationTotal.inc({ status: 'error' });
         const { code, message } = mapErrorToGrpcStatus(error as Error);
@@ -122,8 +122,7 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
         const tokenPair = await deps.authenticateHandler.execute({ email, password });
         authMetrics.loginTotal.inc({ status: 'success' });
         timer({ status: 'success' });
-        callback({
-          code: grpc.status.OK,
+        callback(null, {
           accessToken: tokenPair.accessToken,
           refreshToken: tokenPair.refreshToken,
         });
@@ -143,7 +142,7 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
         const result = await deps.requestPasswordResetHandler.execute({ email });
         authMetrics.passwordResetRequestTotal.inc({ status: 'success' });
         timer({ status: 'success' });
-        callback({ code: grpc.status.OK, message: result.message });
+        callback(null, { message: result.message });
       } catch (error) {
         authMetrics.passwordResetRequestTotal.inc({ status: 'error' });
         const { code, message } = mapErrorToGrpcStatus(error as Error);
@@ -160,7 +159,7 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
         await deps.resetPasswordHandler.execute({ token, newPassword });
         authMetrics.passwordResetCompleteTotal.inc({ status: 'success' });
         timer({ status: 'success' });
-        callback({ code: grpc.status.OK, message: 'Password has been reset successfully' });
+        callback(null, { message: 'Password has been reset successfully' });
       } catch (error) {
         authMetrics.passwordResetCompleteTotal.inc({ status: 'error' });
         const { code, message } = mapErrorToGrpcStatus(error as Error);
@@ -180,7 +179,7 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
           return callback({ code: grpc.status.UNAUTHENTICATED, message: 'Invalid or expired token' });
         }
         timer({ status: 'success' });
-        callback({ code: grpc.status.OK, userId: result.userId, email: result.email });
+        callback(null, { userId: result.userId, email: result.email });
       } catch (error) {
         timer({ status: 'error' });
         deps.logger.error('ValidateSession failed', { error: (error as Error).message });
