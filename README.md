@@ -71,6 +71,7 @@ graph TB
         AuthToken["AuthTokenPair (Value Object)"]
         TokenService["TokenService (Port)"]
         PasswordHasher["PasswordHasher (Port)"]
+        LoginPolicy["LoginPolicy (Port)"]
     end
 
     subgraph "Password Recovery Context"
@@ -102,11 +103,13 @@ graph LR
         U[User Aggregate]
         RT[ResetToken]
         TS[TokenService]
+        LP[LoginPolicy]
     end
 
     RC --> U
     AC --> U
     AC --> TS
+    AC --> LP
     RPC --> RT
     RSC --> U
     RSC --> RT
@@ -115,7 +118,7 @@ graph LR
 
 **Command handlers**:
 - `RegisterUserHandler` — валидация, хеширование, создание User aggregate
-- `AuthenticateUserHandler` — проверка логина/пароля, выдача токенов, учёт попыток
+- `AuthenticateUserHandler` — проверка логина/пароля, IP-based rate limiting, выдача токенов
 - `RequestPasswordResetHandler` — генерация reset token, rate limiting
 - `ResetPasswordHandler` — валидация токена, смена пароля
 
@@ -133,7 +136,7 @@ src/
 │   │   └── events/              # Domain events: UserRegistered
 │   ├── authentication/          # Bounded Context: Authentication
 │   │   ├── model/               # AuthTokenPair value object
-│   │   ├── service/             # Ports: TokenService, PasswordHasher
+│   │   ├── service/             # Ports: TokenService, PasswordHasher, LoginPolicy
 │   │   └── events/              # Domain events: UserAuthenticated
 │   └── password-recovery/       # Bounded Context: Password Recovery
 │       ├── model/               # ResetToken entity
@@ -147,7 +150,7 @@ src/
 │   ├── persistence/             # PostgreSQL repositories
 │   ├── grpc/                    # gRPC server
 │   ├── observability/           # Pino logger, Prometheus metrics
-│   └── rate-limiting/           # InMemoryRateLimiter
+│   └── rate-limiting/           # InMemoryRateLimiter, InMemoryLoginPolicy
 ```
 
 ## Ключевые инварианты и бизнес-правила
@@ -160,8 +163,8 @@ src/
 ### User Aggregate
 - Email уникален
 - Статусы: `ACTIVE` -> `LOCKED`
-- После 5 неудачных попыток входа — автоматическая блокировка (`LOCKED`)
-- Успешная авторизация сбрасывает счётчик неудачных попыток
+- Блокировка по IP: при превышении лимита попыток (10 за 15 мин) IP блокируется
+- IP-based rate limiting предотвращает блокировку легитимных пользователей злоумышленниками
 
 ### Reset Token
 - Криптографически безопасный (32 байта)

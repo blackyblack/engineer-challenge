@@ -57,7 +57,6 @@ const registerRateLimiter = new InMemoryRateLimiter(REGISTER_RATE_LIMITER_CONFIG
 interface RegisterRequest {
   email: string;
   password: string;
-  ipAddress: string;
 }
 
 interface RegisterResponse {
@@ -68,12 +67,28 @@ interface RegisterResponse {
 interface LoginRequest {
   email: string;
   password: string;
-  ipAddress: string;
 }
 
 interface LoginResponse {
   accessToken: string;
   refreshToken: string;
+}
+
+/** Extract IP address from a gRPC peer string (e.g. "ipv4:127.0.0.1:12345") */
+function extractIp(peer: string): string {
+  if (peer.startsWith('ipv4:')) {
+    const withoutPrefix = peer.slice(5);
+    const lastColon = withoutPrefix.lastIndexOf(':');
+    return lastColon !== -1 ? withoutPrefix.slice(0, lastColon) : withoutPrefix;
+  }
+  if (peer.startsWith('ipv6:')) {
+    const addr = peer.slice(5);
+    const bracketEnd = addr.lastIndexOf(']');
+    if (bracketEnd !== -1) {
+      return addr.slice(1, bracketEnd);
+    }
+  }
+  return peer;
 }
 
 interface RequestPasswordResetRequest {
@@ -124,13 +139,19 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
     ) => {
       const timer = authMetrics.grpcRequestDuration.startTimer({ method: 'Register' });
       try {
-        const { email, password, ipAddress } = call.request;
+        const { email, password } = call.request;
+        const ip = extractIp(call.getPeer());
 
-        if (!registerRateLimiter.isAllowed(ipAddress)) {
+        if (!ip) {
+          timer({ status: 'error' });
+          return callback({ code: grpc.status.INVALID_ARGUMENT, message: 'Unable to determine client IP' });
+        }
+
+        if (!registerRateLimiter.isAllowed(ip)) {
           timer({ status: 'rate_limited' });
           return callback({ code: grpc.status.RESOURCE_EXHAUSTED, message: 'Too many registration attempts' });
         }
-        registerRateLimiter.record(ipAddress);
+        registerRateLimiter.record(ip);
 
         const result = await deps.registerHandler.execute({ email, password });
         authMetrics.registrationTotal.inc({ status: 'success' });
@@ -151,15 +172,21 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
     ) => {
       const timer = authMetrics.grpcRequestDuration.startTimer({ method: 'Login' });
       try {
-        const { email, password, ipAddress } = call.request;
+        const { email, password } = call.request;
+        const ip = extractIp(call.getPeer());
 
-        if (!loginRateLimiter.isAllowed(ipAddress)) {
+        if (!ip) {
+          timer({ status: 'error' });
+          return callback({ code: grpc.status.INVALID_ARGUMENT, message: 'Unable to determine client IP' });
+        }
+
+        if (!loginRateLimiter.isAllowed(ip)) {
           timer({ status: 'rate_limited' });
           return callback({ code: grpc.status.RESOURCE_EXHAUSTED, message: 'Too many login attempts' });
         }
-        loginRateLimiter.record(ipAddress);
+        loginRateLimiter.record(ip);
 
-        const tokenPair = await deps.authenticateHandler.execute({ email, password, ip: ipAddress });
+        const tokenPair = await deps.authenticateHandler.execute({ email, password, ip });
         authMetrics.loginTotal.inc({ status: 'success' });
         timer({ status: 'success' });
         callback(null, {
