@@ -87,6 +87,7 @@ function extractIp(peer: string): string {
     if (bracketEnd !== -1) {
       return addr.slice(1, bracketEnd);
     }
+    return addr;
   }
   return peer;
 }
