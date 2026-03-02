@@ -23,9 +23,4 @@ export class InMemoryLoginPolicy implements LoginPolicy {
   async recordFailedLogin(ip: string): Promise<void> {
     this.rateLimiter.record(ip);
   }
-
-  async resetFailedLogins(ip: string): Promise<void> {
-    // No-op: successful login does not clear the sliding window.
-    // The window-based limiter automatically expires old entries.
-  }
 }

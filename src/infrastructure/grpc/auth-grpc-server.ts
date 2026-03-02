@@ -64,21 +64,52 @@ function mapErrorToGrpcStatus(error: Error): { code: grpc.status; message: strin
 const loginRateLimiter = new InMemoryRateLimiter(LOGIN_RATE_LIMITER_CONFIG);
 const registerRateLimiter = new InMemoryRateLimiter(REGISTER_RATE_LIMITER_CONFIG);
 
-/** Extract IP address from a gRPC peer string (e.g. "ipv4:127.0.0.1:12345") */
-function extractIp(peer: string): string {
-  if (peer.startsWith('ipv4:')) {
-    const withoutPrefix = peer.slice(5);
-    const lastColon = withoutPrefix.lastIndexOf(':');
-    return lastColon !== -1 ? withoutPrefix.slice(0, lastColon) : withoutPrefix;
-  }
-  if (peer.startsWith('ipv6:')) {
-    const addr = peer.slice(5);
-    const bracketEnd = addr.lastIndexOf(']');
-    if (bracketEnd !== -1) {
-      return addr.slice(1, bracketEnd);
-    }
-  }
-  return peer;
+interface RegisterRequest {
+  email: string;
+  password: string;
+  ipAddress: string;
+}
+
+interface RegisterResponse {
+  userId: string;
+  email: string;
+}
+
+interface LoginRequest {
+  email: string;
+  password: string;
+  ipAddress: string;
+}
+
+interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+interface RequestPasswordResetRequest {
+  email: string;
+}
+
+interface RequestPasswordResetResponse {
+  message: string;
+}
+
+interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
+interface ResetPasswordResponse {
+  message: string;
+}
+
+interface ValidateSessionRequest {
+  accessToken: string;
+}
+
+interface ValidateSessionResponse {
+  userId: string;
+  email: string;
 }
 
 export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
@@ -97,17 +128,19 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
   const server = new grpc.Server();
 
   server.addService(authService.service, {
-    register: async (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => {
+    register: async (
+      call: grpc.ServerUnaryCall<RegisterRequest, RegisterResponse>,
+      callback: grpc.sendUnaryData<RegisterResponse>,
+    ) => {
       const timer = authMetrics.grpcRequestDuration.startTimer({ method: 'Register' });
       try {
-        const { email, password } = call.request;
-        const ip = extractIp(call.getPeer());
+        const { email, password, ipAddress } = call.request;
 
-        if (!registerRateLimiter.isAllowed(ip)) {
+        if (!registerRateLimiter.isAllowed(ipAddress)) {
           timer({ status: 'rate_limited' });
           return callback({ code: grpc.status.RESOURCE_EXHAUSTED, message: 'Too many registration attempts' });
         }
-        registerRateLimiter.record(ip);
+        registerRateLimiter.record(ipAddress);
 
         const result = await deps.registerHandler.execute({ email, password });
         authMetrics.registrationTotal.inc({ status: 'success' });
@@ -122,19 +155,21 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
       }
     },
 
-    login: async (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => {
+    login: async (
+      call: grpc.ServerUnaryCall<LoginRequest, LoginResponse>,
+      callback: grpc.sendUnaryData<LoginResponse>,
+    ) => {
       const timer = authMetrics.grpcRequestDuration.startTimer({ method: 'Login' });
       try {
-        const { email, password } = call.request;
-        const ip = extractIp(call.getPeer());
+        const { email, password, ipAddress } = call.request;
 
-        if (!loginRateLimiter.isAllowed(ip)) {
+        if (!loginRateLimiter.isAllowed(ipAddress)) {
           timer({ status: 'rate_limited' });
           return callback({ code: grpc.status.RESOURCE_EXHAUSTED, message: 'Too many login attempts' });
         }
-        loginRateLimiter.record(ip);
+        loginRateLimiter.record(ipAddress);
 
-        const tokenPair = await deps.authenticateHandler.execute({ email, password, ip });
+        const tokenPair = await deps.authenticateHandler.execute({ email, password, ip: ipAddress });
         authMetrics.loginTotal.inc({ status: 'success' });
         timer({ status: 'success' });
         callback(null, {
@@ -150,7 +185,10 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
       }
     },
 
-    requestPasswordReset: async (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => {
+    requestPasswordReset: async (
+      call: grpc.ServerUnaryCall<RequestPasswordResetRequest, RequestPasswordResetResponse>,
+      callback: grpc.sendUnaryData<RequestPasswordResetResponse>,
+    ) => {
       const timer = authMetrics.grpcRequestDuration.startTimer({ method: 'RequestPasswordReset' });
       try {
         const { email } = call.request;
@@ -167,7 +205,10 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
       }
     },
 
-    resetPassword: async (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => {
+    resetPassword: async (
+      call: grpc.ServerUnaryCall<ResetPasswordRequest, ResetPasswordResponse>,
+      callback: grpc.sendUnaryData<ResetPasswordResponse>,
+    ) => {
       const timer = authMetrics.grpcRequestDuration.startTimer({ method: 'ResetPassword' });
       try {
         const { token, newPassword } = call.request;
@@ -184,7 +225,10 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
       }
     },
 
-    validateSession: async (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => {
+    validateSession: async (
+      call: grpc.ServerUnaryCall<ValidateSessionRequest, ValidateSessionResponse>,
+      callback: grpc.sendUnaryData<ValidateSessionResponse>,
+    ) => {
       const timer = authMetrics.grpcRequestDuration.startTimer({ method: 'ValidateSession' });
       try {
         const { accessToken } = call.request;

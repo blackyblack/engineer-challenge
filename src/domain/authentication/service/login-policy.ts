@@ -10,7 +10,4 @@ export interface LoginPolicy {
 
   /** Record a failed login attempt for this IP */
   recordFailedLogin(ip: string): Promise<void>;
-
-  /** Reset failed login attempts for this IP (e.g. on successful login) */
-  resetFailedLogins(ip: string): Promise<void>;
 }

@@ -67,8 +67,6 @@ export class AuthenticateUserHandler {
       throw new InvalidCredentialsError();
     }
 
-    await this.loginPolicy.resetFailedLogins(command.ip);
-
     const tokenPair = await this.tokenService.issueTokenPair({
       userId: user.id,
       email: user.email.value,
