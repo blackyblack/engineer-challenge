@@ -25,7 +25,11 @@ export class InMemoryResetTokenRepository implements ResetTokenRepository {
   async invalidateAllForUser(userId: string): Promise<void> {
     for (const [id, rt] of this.tokens.entries()) {
       if (rt.userId === userId && rt.isValid()) {
-        rt.markUsed();
+        try {
+          rt.markUsed();
+        } catch {
+          // Token may have expired between isValid() check and markUsed() — safe to ignore
+        }
       }
     }
   }

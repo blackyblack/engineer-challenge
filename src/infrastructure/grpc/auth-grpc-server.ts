@@ -57,10 +57,10 @@ function mapErrorToGrpcStatus(error: Error): { code: grpc.status; message: strin
 }
 
 /**
- * Rate limiter for gRPC endpoints
+ * Rate limiter for gRPC endpoints (transport-level protection)
  * - Login: max 10 attempts per 15 minutes, 1s cooldown
  * - Register: max 5 per hour, 5s cooldown
- * - PasswordReset: max 3 per hour, 60s cooldown
+ * Note: Password reset rate limiting is handled at the application layer via ResetPolicy
  */
 const loginRateLimiter = new InMemoryRateLimiter({ maxRequests: 10, windowMs: 15 * 60 * 1000, cooldownMs: 1000 });
 const registerRateLimiter = new InMemoryRateLimiter({ maxRequests: 5, windowMs: 60 * 60 * 1000, cooldownMs: 5000 });

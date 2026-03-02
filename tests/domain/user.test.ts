@@ -3,7 +3,8 @@ import { Email } from '../../src/domain/identity/model/email';
 
 describe('User Aggregate', () => {
   const testEmail = Email.create('test@example.com');
-  const testPasswordHash = '$2a$12$hashedpassword';
+  // Mock hash (not a real bcrypt hash) — only used for unit tests that don't verify the hash
+  const testPasswordHash = '$2a$12$mockhashedpasswordfortesting';
 
   it('should register a new user with ACTIVE status', () => {
     const user = User.register(testEmail, testPasswordHash);
