@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import { DomainEvent } from '../../identity/model/user';
 
 /**
- * ResetToken Entity — Password Recovery Bounded Context
+ * ResetToken Entity for Password Recovery
  *
  * Invariants:
  * - Token expires after 1 hour
@@ -74,6 +74,8 @@ export class ResetTokenNotFoundError extends Error {
     this.name = 'ResetTokenNotFoundError';
   }
 }
+
+// TODO: Send domain events for reset token lifecycle (requested, completed)
 
 export class PasswordResetRequested implements DomainEvent {
   readonly eventType = 'PasswordResetRequested';

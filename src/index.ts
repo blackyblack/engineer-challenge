@@ -72,7 +72,6 @@ async function main() {
       logger.error('Failed to bind gRPC server', { error: err.message });
       process.exit(1);
     }
-    grpcServer.start();
     logger.info(`gRPC server listening on port ${port}`);
   });
 
@@ -81,13 +80,15 @@ async function main() {
     if (req.url === '/metrics') {
       res.setHeader('Content-Type', metricsRegistry.contentType);
       res.end(await metricsRegistry.metrics());
-    } else if (req.url === '/health') {
+      return;
+    }
+    if (req.url === '/health') {
       res.writeHead(200);
       res.end('OK');
-    } else {
-      res.writeHead(404);
-      res.end('Not Found');
+      return;
     }
+    res.writeHead(404);
+    res.end('Not Found');
   });
 
   metricsServer.listen(Number(metricsPort), () => {

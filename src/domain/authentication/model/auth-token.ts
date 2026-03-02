@@ -1,5 +1,5 @@
 /**
- * AuthToken Value Object
+ * AuthToken Model
  *
  * Represents a pair of JWT tokens (access + refresh).
  * Invariants:

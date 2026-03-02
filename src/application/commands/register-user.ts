@@ -3,7 +3,7 @@ import { PasswordHasher } from '../../domain/authentication';
 import { Logger } from '../../infrastructure/observability/logger';
 
 /**
- * RegisterUser Command — Command Side (CQRS)
+ * RegisterUser Command
  *
  * Orchestrates the user registration flow:
  * 1. Validate email format
@@ -33,25 +33,21 @@ export class RegisterUserHandler {
   async execute(command: RegisterUserCommand): Promise<RegisterUserResult> {
     this.logger.info('Processing RegisterUser command', { email: command.email });
 
-    // 1. Validate email
+    // Validate email - throws if invalid format
     const email = Email.create(command.email);
 
-    // 2. Validate password strength
+    // Validate password strength - throws if invalid
     Password.create(command.password);
 
-    // 3. Check uniqueness
     const exists = await this.userRepository.findByEmail(email);
     if (exists) {
       throw new DuplicateEmailError(email.value);
     }
 
-    // 4. Hash password
     const passwordHash = await this.passwordHasher.hash(command.password);
 
-    // 5. Create aggregate
     const user = User.register(email, passwordHash);
 
-    // 6. Persist
     await this.userRepository.save(user);
 
     this.logger.info('User registered successfully', { userId: user.id, email: email.value });

@@ -3,7 +3,7 @@ import { PasswordHasher, TokenService, AuthTokenPair } from '../../domain/authen
 import { Logger } from '../../infrastructure/observability/logger';
 
 /**
- * AuthenticateUser Command — Command Side (CQRS)
+ * AuthenticateUser Command
  *
  * Orchestrates the login flow:
  * 1. Find user by email
@@ -49,6 +49,9 @@ export class AuthenticateUserHandler {
     }
 
     const passwordValid = await this.passwordHasher.compare(command.password, user.passwordHash);
+
+    // TODO: we should not lock user by email, since attacker could use this to lock out users.
+    // Instead, consider tracking failed attempts by IP or using a more sophisticated approach like CAPTCHA after certain failures.
 
     if (!passwordValid) {
       user.recordFailedLogin();

@@ -3,7 +3,7 @@ import { ResetToken, ResetTokenRepository, ResetPolicy, ResetRateLimitExceededEr
 import { Logger } from '../../infrastructure/observability/logger';
 
 /**
- * RequestPasswordReset Command — Command Side (CQRS)
+ * RequestPasswordReset Command
  *
  * Orchestrates the password reset request:
  * 1. Find user by email (silently succeed even if not found — prevent enumeration)
@@ -32,6 +32,7 @@ export class RequestPasswordResetHandler {
   async execute(command: RequestPasswordResetCommand): Promise<RequestPasswordResetResult> {
     this.logger.info('Processing RequestPasswordReset command', { email: command.email });
 
+    // Validates email - throws if invalid format, but does not check existence
     const email = Email.create(command.email);
     const user = await this.userRepository.findByEmail(email);
 
@@ -39,24 +40,22 @@ export class RequestPasswordResetHandler {
     if (!user) {
       this.logger.info('Password reset requested for non-existent email', { email: command.email });
       return {
-        message: 'If the email exists, a reset link has been sent',
+        // TODO: move to constants - we critically want to ensure this message is identical to the success case to prevent enumeration attacks
+        message: 'Reset link has been sent',
       };
     }
 
-    // Check rate limit
     const canReset = await this.resetPolicy.canRequestReset(user.id);
     if (!canReset) {
       throw new ResetRateLimitExceededError(user.id);
     }
 
-    // Invalidate old tokens
-    await this.resetTokenRepository.invalidateAllForUser(user.id);
+    // Invalidate old tokens and create a new one
 
-    // Create new token
+    await this.resetTokenRepository.invalidateAllForUser(user.id);
     const resetToken = ResetToken.create(user.id);
     await this.resetTokenRepository.save(resetToken);
 
-    // Record the request for rate limiting
     await this.resetPolicy.recordResetRequest(user.id);
 
     this.logger.info('Reset token created', { userId: user.id, tokenId: resetToken.id });
@@ -68,7 +67,7 @@ export class RequestPasswordResetHandler {
     // and deliver it to the user's verified email address.
 
     return {
-      message: 'If the email exists, a reset link has been sent',
+      message: 'Reset link has been sent',
     };
   }
 }

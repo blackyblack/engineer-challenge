@@ -1,7 +1,6 @@
 /**
- * Email Value Object
+ * Email Model
  *
- * Encapsulates email validation rules.
  * Invariants:
  * - Must be a valid email format
  * - Stored in lowercase (canonical form)
@@ -16,6 +15,8 @@ export class Email {
     }
     return new Email(normalized);
   }
+
+  // TODO: use library like validator.js for more robust email validation
 
   static isValid(email: string): boolean {
     const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

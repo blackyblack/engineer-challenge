@@ -1,5 +1,5 @@
 /**
- * Password Hasher Interface (Port)
+ * Password Hasher
  *
  * Abstracts the password hashing algorithm.
  * Invariants:

@@ -8,7 +8,7 @@ import {
 import { Logger } from '../../infrastructure/observability/logger';
 
 /**
- * ResetPassword Command — Command Side (CQRS)
+ * ResetPassword Command
  *
  * Orchestrates the password reset:
  * 1. Find reset token
@@ -34,25 +34,23 @@ export class ResetPasswordHandler {
   async execute(command: ResetPasswordCommand): Promise<void> {
     this.logger.info('Processing ResetPassword command');
 
-    // 1. Find token
     const resetToken = await this.resetTokenRepository.findByToken(command.token);
     if (!resetToken) {
       throw new ResetTokenNotFoundError(command.token);
     }
 
-    // 2. Verify token validity
     if (resetToken.isExpired()) {
       throw new ResetTokenExpiredError(resetToken.id);
     }
     resetToken.markUsed();
 
-    // 3. Validate new password
+    // Validate the password - throws on failure
     Password.create(command.newPassword);
 
-    // 4. Hash new password
     const newHash = await this.passwordHasher.hash(command.newPassword);
 
-    // 5. Update user
+    // TODO: consider doing this in a transaction to ensure atomicity
+    
     const user = await this.userRepository.findById(resetToken.userId);
     if (!user) {
       throw new UserNotFoundError(resetToken.userId);
@@ -60,7 +58,6 @@ export class ResetPasswordHandler {
     user.changePassword(newHash);
     await this.userRepository.save(user);
 
-    // 6. Persist token state
     await this.resetTokenRepository.save(resetToken);
 
     this.logger.info('Password reset completed', { userId: user.id });

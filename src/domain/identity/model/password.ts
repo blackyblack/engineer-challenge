@@ -1,5 +1,5 @@
 /**
- * Password Value Object
+ * Password Model
  *
  * Business rules for password strength:
  * - Minimum 8 characters

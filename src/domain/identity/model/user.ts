@@ -3,7 +3,7 @@ import { Email } from './email';
 import { UserRegistered, UserActivated, UserLocked } from '../events/user-events';
 
 /**
- * User Aggregate Root — Identity Bounded Context
+ * User Model
  *
  * Invariants:
  * - Email must be unique (enforced at repository level)

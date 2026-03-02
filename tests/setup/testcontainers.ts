@@ -5,9 +5,6 @@ import * as path from 'path';
 
 /**
  * Shared test setup for PostgreSQL via testcontainers.
- *
- * Provides a real PostgreSQL instance for integration/application tests,
- * eliminating the need for in-memory repository stubs.
  */
 
 let container: StartedPostgreSqlContainer | null = null;
@@ -37,7 +34,6 @@ export async function startPostgres(): Promise<Pool> {
 
 export async function cleanTables(p: Pool): Promise<void> {
   await p.query('DELETE FROM reset_tokens');
-  await p.query('DELETE FROM domain_events');
   await p.query('DELETE FROM users');
 }
 

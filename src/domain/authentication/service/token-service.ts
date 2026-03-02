@@ -1,11 +1,10 @@
 import { AuthTokenPair, TokenPayload } from '../model/auth-token';
 
 /**
- * Token Service Interface (Port)
+ * Token Service
  *
  * Responsible for issuing and verifying JWT tokens.
  * Infrastructure layer provides the implementation.
- * All methods are async to support modern crypto libraries (e.g. jose).
  */
 export interface TokenService {
   issueTokenPair(payload: TokenPayload): Promise<AuthTokenPair>;

@@ -3,12 +3,7 @@ syntax = "proto3";
 package auth;
 
 /**
- * Auth Service — gRPC API Definition
- *
- * Bounded Contexts exposed:
- * - Identity: Register
- * - Authentication: Login, ValidateSession
- * - Password Recovery: RequestPasswordReset, ResetPassword
+ * Auth Service — API Definition
  */
 service AuthService {
   // Commands (write side)
@@ -43,8 +38,6 @@ message LoginRequest {
 message LoginResponse {
   string access_token = 1;
   string refresh_token = 2;
-  int64 access_token_expires_at = 3;
-  int64 refresh_token_expires_at = 4;
 }
 
 // --- Password Recovery Context ---

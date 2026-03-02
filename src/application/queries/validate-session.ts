@@ -2,7 +2,7 @@ import { TokenService } from '../../domain/authentication';
 import { Logger } from '../../infrastructure/observability/logger';
 
 /**
- * ValidateSession Query — Query Side (CQRS)
+ * ValidateSession Query
  *
  * Verifies an access token and returns the session info.
  */
