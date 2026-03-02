@@ -130,7 +130,7 @@ src/
 │   ├── identity/                # Bounded Context: Identity
 │   │   ├── model/               # User aggregate, Email/Password value objects
 │   │   ├── repository/          # Port: UserRepository interface
-│   │   └── events/              # Domain events: UserRegistered, UserLocked
+│   │   └── events/              # Domain events: UserRegistered
 │   ├── authentication/          # Bounded Context: Authentication
 │   │   ├── model/               # AuthTokenPair value object
 │   │   ├── service/             # Ports: TokenService, PasswordHasher
@@ -216,7 +216,6 @@ npm run test:integration
 
 Система генерирует доменные события:
 - `UserRegistered` — при успешной регистрации
-- `UserLocked` — при блокировке из-за brute force
 - `UserAuthenticated` — при успешном входе
 - `AuthenticationFailed` — при неудачной попытке
 - `PasswordResetRequested` — при запросе сброса
@@ -229,12 +228,14 @@ npm run test:integration
 1. In-memory rate limiter
 2. Testcontainers для тестов
 3. JWT без блеклистинга
+4. Нет долгосрочной блокировки пользователей
 
 ## Следующие шаги для будущей версии
 
-1. **Email-сервис** — отправка reset-ссылок через email
-2. **CI/CD** — автоматические тесты, сканирование уязвимостей, деплой
-3. **Redis rate limiter** — рейт лимит с помощью Redis для поддержки масштабирования
-4. **Token blacklist** — поддержка logout пользователя
-5. **Refresh token rotation** — ротация refresh токена при каждом использовании
-6. **Account recovery** — дополнительные методы верификации (SMS, TOTP)
+1. **Linter, Formatter, Typecheck** - проверка кода и стандартное форматирование
+2. **Email-сервис** — отправка reset-ссылок по почте
+3. **CI/CD** — автоматические тесты, сканирование уязвимостей, деплой
+4. **Redis rate limiter** — рейт лимит с помощью Redis для поддержки масштабирования
+5. **Token blacklist** — поддержка logout пользователя
+6. **Refresh token rotation** — ротация refresh токена при каждом использовании
+7. **Account recovery** — дополнительные методы верификации (SMS, TOTP)

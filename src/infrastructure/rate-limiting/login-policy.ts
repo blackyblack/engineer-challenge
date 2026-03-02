@@ -5,9 +5,7 @@ import { LOGIN_RATE_LIMITER_CONFIG } from '../../constants';
 /**
  * In-Memory Login Policy implementation
  *
- * Uses rate limiter to enforce login attempt limits by IP address:
- * - Max 10 attempts per 15 minutes
- * - 1 second cooldown between attempts
+ * Uses rate limiter to enforce login attempt limits by IP address
  */
 export class InMemoryLoginPolicy implements LoginPolicy {
   private readonly rateLimiter: InMemoryRateLimiter;

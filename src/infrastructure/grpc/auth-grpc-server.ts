@@ -10,7 +10,7 @@ import { authMetrics } from '../observability/metrics';
 import { Logger } from '../observability/logger';
 import { InMemoryRateLimiter } from '../rate-limiting/rate-limiter';
 import { LOGIN_RATE_LIMITER_CONFIG, REGISTER_RATE_LIMITER_CONFIG } from '../../constants';
-import { InvalidEmailError, WeakPasswordError, DuplicateEmailError, UserLockedError } from '../../domain/identity';
+import { InvalidEmailError, WeakPasswordError, DuplicateEmailError } from '../../domain/identity';
 import { InvalidCredentialsError } from '../../application/commands/authenticate-user';
 import { ResetTokenExpiredError, ResetTokenNotFoundError, ResetTokenAlreadyUsedError, ResetRateLimitExceededError } from '../../domain/password-recovery';
 
@@ -36,9 +36,6 @@ function mapErrorToGrpcStatus(error: Error): { code: grpc.status; message: strin
   if (error instanceof InvalidCredentialsError) {
     return { code: grpc.status.UNAUTHENTICATED, message: error.message };
   }
-  if (error instanceof UserLockedError) {
-    return { code: grpc.status.PERMISSION_DENIED, message: error.message };
-  }
   if (error instanceof ResetTokenNotFoundError) {
     return { code: grpc.status.NOT_FOUND, message: error.message };
   }
@@ -53,13 +50,6 @@ function mapErrorToGrpcStatus(error: Error): { code: grpc.status; message: strin
   }
   return { code: grpc.status.INTERNAL, message: 'Internal server error' };
 }
-
-/**
- * Rate limiter for gRPC endpoints
- * - Login: max 10 attempts per 15 minutes, 1s cooldown
- * - Register: max 5 per hour, 5s cooldown
- * Note: Password reset rate limiting is handled at the application layer via ResetPolicy
- */
 
 const loginRateLimiter = new InMemoryRateLimiter(LOGIN_RATE_LIMITER_CONFIG);
 const registerRateLimiter = new InMemoryRateLimiter(REGISTER_RATE_LIMITER_CONFIG);

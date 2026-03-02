@@ -4,7 +4,7 @@ import { PgUserRepository } from '../../src/infrastructure/persistence/pg-user-r
 import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/argon2-password-hasher';
 import { JwtTokenProvider } from '../../src/infrastructure/crypto/jwt-token-provider';
 import { InMemoryLoginPolicy } from '../../src/infrastructure/rate-limiting/login-policy';
-import { Email, UserStatus } from '../../src/domain/identity';
+import { Email } from '../../src/domain/identity';
 import { Logger } from '../../src/infrastructure/observability/logger';
 import { Pool } from 'pg';
 import { startPostgres, stopPostgres, cleanTables } from '../setup/testcontainers';
@@ -102,29 +102,6 @@ describe('AuthenticateUser Command Handler', () => {
       ip: '10.0.0.2',
     });
     expect(result.accessToken).toBeDefined();
-  });
-
-  it('should not lock user account after failed attempts from one IP', async () => {
-    const strictLoginPolicy = new InMemoryLoginPolicy({
-      maxRequests: 5,
-      windowMs: 15 * 60 * 1000,
-      cooldownMs: 0,
-    });
-    const strictHandler = new AuthenticateUserHandler(
-      userRepository, passwordHasher, tokenService, strictLoginPolicy, mockLogger,
-    );
-
-    // Fail 4 times from one IP
-    for (let i = 0; i < 4; i++) {
-      await expect(
-        strictHandler.execute({ email: 'user@example.com', password: 'Wrong1!', ip: '10.0.0.1' }),
-      ).rejects.toThrow();
-    }
-
-    // User account should NOT be locked
-    const email = Email.create('user@example.com');
-    const user = await userRepository.findByEmail(email);
-    expect(user!.status).toBe(UserStatus.ACTIVE);
   });
 
   it('should issue tokens that can be verified', async () => {

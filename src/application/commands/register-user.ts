@@ -10,7 +10,7 @@ import { Logger } from '../../infrastructure/observability/logger';
  * 2. Validate password strength
  * 3. Check for duplicate email
  * 4. Hash password
- * 5. Create user aggregate
+ * 5. Create user aggregate data
  * 6. Persist user
  */
 export interface RegisterUserCommand {

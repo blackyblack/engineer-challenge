@@ -4,10 +4,8 @@ import { RESET_RATE_LIMITER_CONFIG } from '../../constants';
 
 /**
  * In-Memory Reset Policy implementation
- *
- * Uses rate limiter to enforce reset request limits:
- * - Max 3 requests per hour
- * - 60 second cooldown between requests
+ * 
+ * Uses rate limiter to enforce password reset request limits by user ID
  */
 export class InMemoryResetPolicy implements ResetPolicy {
   private readonly rateLimiter: InMemoryRateLimiter;

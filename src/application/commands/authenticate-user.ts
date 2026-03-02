@@ -8,10 +8,9 @@ import { Logger } from '../../infrastructure/observability/logger';
  * Orchestrates the login flow:
  * 1. Check IP-based rate limit
  * 2. Find user by email
- * 3. Verify user is active (not locked)
- * 4. Verify password
- * 5. Record failed attempt by IP on failure
- * 6. Issue token pair on success
+ * 3. Verify password
+ * 4. Record failed attempt by IP on failure
+ * 5. Issue token pair on success
  */
 export interface AuthenticateUserCommand {
   email: string;
@@ -50,11 +49,6 @@ export class AuthenticateUserHandler {
     if (!user) {
       await this.loginPolicy.recordFailedLogin(command.ip);
       this.logger.warn('Authentication failed: user not found', { email: command.email });
-      throw new InvalidCredentialsError();
-    }
-
-    if (!user.isActive()) {
-      this.logger.warn('Authentication failed: user not active', { userId: user.id, status: user.status });
       throw new InvalidCredentialsError();
     }
 

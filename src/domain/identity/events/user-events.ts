@@ -9,20 +9,3 @@ export class UserRegistered implements DomainEvent {
     public readonly occurredAt: Date,
   ) {}
 }
-
-export class UserActivated implements DomainEvent {
-  readonly eventType = 'UserActivated';
-  constructor(
-    public readonly aggregateId: string,
-    public readonly occurredAt: Date,
-  ) {}
-}
-
-export class UserLocked implements DomainEvent {
-  readonly eventType = 'UserLocked';
-  constructor(
-    public readonly aggregateId: string,
-    public readonly reason: string,
-    public readonly occurredAt: Date,
-  ) {}
-}
