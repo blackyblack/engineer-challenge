@@ -13,7 +13,7 @@ import { InvalidEmailError, WeakPasswordError, DuplicateEmailError, UserLockedEr
 import { InvalidCredentialsError } from '../../application/commands/authenticate-user';
 import { ResetTokenExpiredError, ResetTokenNotFoundError, ResetTokenAlreadyUsedError, ResetRateLimitExceededError } from '../../domain/password-recovery';
 
-const PROTO_PATH = path.resolve(__dirname, '../../../proto/auth.proto');
+const PROTO_PATH = path.resolve(process.cwd(), 'proto/auth.proto');
 
 export interface GrpcServerDeps {
   registerHandler: RegisterUserHandler;
@@ -141,7 +141,7 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
         const result = await deps.requestPasswordResetHandler.execute({ email });
         authMetrics.passwordResetRequestTotal.inc({ status: 'success' });
         timer({ status: 'success' });
-        callback(null, { message: result.message, resetToken: result.resetToken });
+        callback(null, { message: result.message });
       } catch (error) {
         authMetrics.passwordResetRequestTotal.inc({ status: 'error' });
         const { code, message } = mapErrorToGrpcStatus(error as Error);

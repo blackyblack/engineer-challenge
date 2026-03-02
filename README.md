@@ -34,20 +34,6 @@ docker compose up --build
 - **Auth gRPC Service** на порту `50051` (gRPC) и `9090` (метрики/health)
 - **Prometheus** на порту `9091`
 
-### Запуск через Terraform
-
-```bash
-cd infra/terraform
-terraform init
-terraform apply
-```
-
-### Kubernetes
-
-```bash
-kubectl apply -f infra/k8s/auth-module.yaml
-```
-
 ## Выбор стека и аргументация
 
 | Решение | Почему | Альтернативы |
@@ -208,8 +194,6 @@ src/
 |------------|------|------------|
 | **Docker Compose** | `infra/docker-compose.yml` | Полный локальный стенд (PostgreSQL + Auth + Prometheus) |
 | **Dockerfile** | `infra/docker/Dockerfile` | Multi-stage build, non-root user |
-| **Terraform** | `infra/terraform/main.tf` | Docker provider, воспроизводимое развёртывание |
-| **Kubernetes** | `infra/k8s/auth-module.yaml` | Deployments, Services, Secrets, PVC, health probes |
 
 ## Безопасность
 
@@ -220,7 +204,7 @@ src/
 - ✅ Предотвращение email enumeration при password reset
 - ✅ Одноразовые reset-токены с TTL
 - ✅ Non-root user в Docker контейнере
-- ✅ Secrets через environment variables (в K8s — через Secrets)
+- ✅ Secrets через environment variables
 
 ## Наблюдаемость
 
@@ -283,7 +267,6 @@ npm run test:integration
 | Решение | Trade-off | Обоснование |
 |---------|-----------|-------------|
 | In-memory rate limiter | Не работает в distributed-сценарии | Достаточно для single-node; в production — Redis |
-| Reset token в ответе API | Небезопасно в production | Для демонстрации; в production — только через email |
 | Testcontainers для тестов | Требуют Docker, медленнее unit-тестов | Тестируют реальные SQL-запросы, нет расхождения mock/production |
 | JWT без blacklist | Нельзя отозвать access token до истечения | 15 мин TTL минимизирует окно; для полного logout нужен token blacklist в Redis |
 | Single process | Нет horizontal scaling | Stateless design позволяет масштабировать; rate limiter нужно перенести в Redis |

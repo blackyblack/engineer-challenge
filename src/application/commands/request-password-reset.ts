@@ -18,8 +18,6 @@ export interface RequestPasswordResetCommand {
 }
 
 export interface RequestPasswordResetResult {
-  /** Token is returned for demo/testing; in production it would only be sent via email */
-  resetToken: string;
   message: string;
 }
 
@@ -41,7 +39,6 @@ export class RequestPasswordResetHandler {
     if (!user) {
       this.logger.info('Password reset requested for non-existent email', { email: command.email });
       return {
-        resetToken: '',
         message: 'If the email exists, a reset link has been sent',
       };
     }
@@ -64,9 +61,13 @@ export class RequestPasswordResetHandler {
 
     this.logger.info('Reset token created', { userId: user.id, tokenId: resetToken.id });
 
-    // In production, send email here instead of returning token
+    // TODO: Send reset token via email (e.g. SendGrid, SES). The token value is
+    // resetToken.token — it must never be returned over the API. At this point the
+    // email service would compose a link like:
+    //   https://app.example.com/reset-password?token=${resetToken.token}
+    // and deliver it to the user's verified email address.
+
     return {
-      resetToken: resetToken.token,
       message: 'If the email exists, a reset link has been sent',
     };
   }

@@ -20,6 +20,18 @@ const mockLogger: Logger = {
   debug: jest.fn(),
 };
 
+/** Test helper: retrieve latest unused reset token for a user directly from DB */
+async function getLatestResetToken(pool: Pool, email: string): Promise<string | null> {
+  const result = await pool.query(
+    `SELECT rt.token FROM reset_tokens rt
+     JOIN users u ON u.id = rt.user_id
+     WHERE u.email = $1 AND rt.used = false AND rt.expires_at > NOW()
+     ORDER BY rt.created_at DESC LIMIT 1`,
+    [email],
+  );
+  return result.rows.length > 0 ? result.rows[0].token : null;
+}
+
 describe('Password Recovery Flow', () => {
   let requestResetHandler: RequestPasswordResetHandler;
   let resetPasswordHandler: ResetPasswordHandler;
@@ -65,23 +77,31 @@ describe('Password Recovery Flow', () => {
     });
   });
 
-  it('should request password reset and get token', async () => {
+  it('should request password reset successfully', async () => {
     const result = await requestResetHandler.execute({ email: 'user@example.com' });
-    expect(result.resetToken).toBeDefined();
-    expect(result.resetToken.length).toBeGreaterThan(0);
     expect(result.message).toContain('reset link');
+
+    // Token should exist in DB (delivered out-of-band, e.g. via email)
+    const token = await getLatestResetToken(pool, 'user@example.com');
+    expect(token).toBeDefined();
+    expect(token!.length).toBeGreaterThan(0);
   });
 
   it('should silently succeed for non-existent email (prevent enumeration)', async () => {
     const result = await requestResetHandler.execute({ email: 'nobody@example.com' });
-    expect(result.resetToken).toBe('');
     expect(result.message).toContain('reset link');
+
+    // No token should have been created
+    const token = await getLatestResetToken(pool, 'nobody@example.com');
+    expect(token).toBeNull();
   });
 
   it('should reset password with valid token', async () => {
-    const resetResult = await requestResetHandler.execute({ email: 'user@example.com' });
+    await requestResetHandler.execute({ email: 'user@example.com' });
+    const token = await getLatestResetToken(pool, 'user@example.com');
+
     await resetPasswordHandler.execute({
-      token: resetResult.resetToken,
+      token: token!,
       newPassword: 'NewPass1!',
     });
 
@@ -100,37 +120,44 @@ describe('Password Recovery Flow', () => {
   });
 
   it('should reject reset with weak new password', async () => {
-    const resetResult = await requestResetHandler.execute({ email: 'user@example.com' });
+    await requestResetHandler.execute({ email: 'user@example.com' });
+    const token = await getLatestResetToken(pool, 'user@example.com');
+
     await expect(
-      resetPasswordHandler.execute({ token: resetResult.resetToken, newPassword: 'weak' }),
+      resetPasswordHandler.execute({ token: token!, newPassword: 'weak' }),
     ).rejects.toThrow(WeakPasswordError);
   });
 
   it('should prevent token reuse', async () => {
-    const resetResult = await requestResetHandler.execute({ email: 'user@example.com' });
+    await requestResetHandler.execute({ email: 'user@example.com' });
+    const token = await getLatestResetToken(pool, 'user@example.com');
+
     await resetPasswordHandler.execute({
-      token: resetResult.resetToken,
+      token: token!,
       newPassword: 'NewPass1!',
     });
 
     // Try to use the same token again
     await expect(
-      resetPasswordHandler.execute({ token: resetResult.resetToken, newPassword: 'Another1!' }),
+      resetPasswordHandler.execute({ token: token!, newPassword: 'Another1!' }),
     ).rejects.toThrow();
   });
 
   it('should invalidate old tokens when new one is requested', async () => {
-    const firstResult = await requestResetHandler.execute({ email: 'user@example.com' });
-    const secondResult = await requestResetHandler.execute({ email: 'user@example.com' });
+    await requestResetHandler.execute({ email: 'user@example.com' });
+    const firstToken = await getLatestResetToken(pool, 'user@example.com');
+
+    await requestResetHandler.execute({ email: 'user@example.com' });
+    const secondToken = await getLatestResetToken(pool, 'user@example.com');
 
     // First token should be invalidated
     await expect(
-      resetPasswordHandler.execute({ token: firstResult.resetToken, newPassword: 'NewPass1!' }),
+      resetPasswordHandler.execute({ token: firstToken!, newPassword: 'NewPass1!' }),
     ).rejects.toThrow();
 
     // Second token should work
     await resetPasswordHandler.execute({
-      token: secondResult.resetToken,
+      token: secondToken!,
       newPassword: 'NewPass1!',
     });
   });

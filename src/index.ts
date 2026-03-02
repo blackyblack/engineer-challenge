@@ -72,6 +72,7 @@ async function main() {
       logger.error('Failed to bind gRPC server', { error: err.message });
       process.exit(1);
     }
+    grpcServer.start();
     logger.info(`gRPC server listening on port ${port}`);
   });
 
