@@ -62,4 +62,19 @@ describe('ResetToken Model', () => {
     expect(token1.token).not.toBe(token2.token);
     expect(token1.id).not.toBe(token2.id);
   });
+
+  it('should emit PasswordResetRequested event on creation', () => {
+    const token = ResetToken.create('user-123');
+    expect(token.domainEvents).toHaveLength(1);
+    expect(token.domainEvents[0].eventType).toBe('PasswordResetRequested');
+    expect(token.domainEvents[0].aggregateId).toBe(token.id);
+  });
+
+  it('should emit PasswordResetCompleted event on markUsed', () => {
+    const token = ResetToken.create('user-123');
+    token.markUsed();
+    expect(token.domainEvents).toHaveLength(2);
+    expect(token.domainEvents[1].eventType).toBe('PasswordResetCompleted');
+    expect(token.domainEvents[1].aggregateId).toBe(token.id);
+  });
 });

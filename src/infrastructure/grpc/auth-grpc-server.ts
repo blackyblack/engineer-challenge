@@ -67,7 +67,9 @@ const registerRateLimiter = new InMemoryRateLimiter(REGISTER_RATE_LIMITER_CONFIG
 /** Extract IP address from a gRPC peer string (e.g. "ipv4:127.0.0.1:12345") */
 function extractIp(peer: string): string {
   if (peer.startsWith('ipv4:')) {
-    return peer.slice(5, peer.lastIndexOf(':'));
+    const withoutPrefix = peer.slice(5);
+    const lastColon = withoutPrefix.lastIndexOf(':');
+    return lastColon !== -1 ? withoutPrefix.slice(0, lastColon) : withoutPrefix;
   }
   if (peer.startsWith('ipv6:')) {
     const addr = peer.slice(5);
