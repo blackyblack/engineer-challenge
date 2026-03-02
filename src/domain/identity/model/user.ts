@@ -8,12 +8,11 @@ import { UserRegistered, UserActivated, UserLocked } from '../events/user-events
  * Invariants:
  * - Email must be unique (enforced at repository level)
  * - User must have a hashed password (never plaintext)
- * - User starts in PENDING status after registration
+ * - User starts in ACTIVE status after registration
  * - A locked user cannot authenticate
  */
 
 export enum UserStatus {
-  PENDING = 'PENDING',
   ACTIVE = 'ACTIVE',
   LOCKED = 'LOCKED',
 }

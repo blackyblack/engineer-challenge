@@ -79,7 +79,7 @@ describe('Password Recovery Flow', () => {
 
   it('should request password reset successfully', async () => {
     const result = await requestResetHandler.execute({ email: 'user@example.com' });
-    expect(result.message).toContain('reset link');
+    expect(result.message).toContain('Reset link');
 
     // Token should exist in DB (delivered out-of-band, e.g. via email)
     const token = await getLatestResetToken(pool, 'user@example.com');
@@ -89,7 +89,7 @@ describe('Password Recovery Flow', () => {
 
   it('should silently succeed for non-existent email (prevent enumeration)', async () => {
     const result = await requestResetHandler.execute({ email: 'nobody@example.com' });
-    expect(result.message).toContain('reset link');
+    expect(result.message).toContain('Reset link');
 
     // No token should have been created
     const token = await getLatestResetToken(pool, 'nobody@example.com');

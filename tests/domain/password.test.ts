@@ -1,6 +1,6 @@
 import { Password, WeakPasswordError } from '../../src/domain/identity/model/password';
 
-describe('Password Value Object', () => {
+describe('Password Model', () => {
   it('should accept a strong password', () => {
     const password = Password.create('Str0ng!Pass');
     expect(password.value).toBe('Str0ng!Pass');

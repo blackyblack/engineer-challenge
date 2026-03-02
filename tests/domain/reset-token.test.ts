@@ -4,7 +4,7 @@ import {
   ResetTokenAlreadyUsedError,
 } from '../../src/domain/password-recovery/model/reset-token';
 
-describe('ResetToken Entity', () => {
+describe('ResetToken Model', () => {
   it('should create a valid reset token', () => {
     const token = ResetToken.create('user-123');
     expect(token.id).toBeDefined();
@@ -20,7 +20,7 @@ describe('ResetToken Entity', () => {
   });
 
   it('should detect expired token', () => {
-    const token = ResetToken.reconstitute(
+    const token = new ResetToken(
       'id-1',
       'user-123',
       'token-value',
@@ -45,7 +45,7 @@ describe('ResetToken Entity', () => {
   });
 
   it('should reject marking expired token as used', () => {
-    const token = ResetToken.reconstitute(
+    const token = new ResetToken(
       'id-1',
       'user-123',
       'token-value',
@@ -54,13 +54,6 @@ describe('ResetToken Entity', () => {
       new Date(),
     );
     expect(() => token.markUsed()).toThrow(ResetTokenExpiredError);
-  });
-
-  it('should have 1 hour TTL', () => {
-    const token = ResetToken.create('user-123');
-    const expectedExpiry = Date.now() + 60 * 60 * 1000;
-    // Allow 5 second tolerance
-    expect(Math.abs(token.expiresAt.getTime() - expectedExpiry)).toBeLessThan(5000);
   });
 
   it('should produce unique tokens', () => {

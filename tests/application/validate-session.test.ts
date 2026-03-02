@@ -24,15 +24,14 @@ describe('ValidateSession Query Handler', () => {
     });
 
     const result = await handler.execute({ accessToken: tokenPair.accessToken });
-    expect(result.valid).toBe(true);
-    expect(result.userId).toBe('user-123');
-    expect(result.email).toBe('test@example.com');
+    expect(result).toBeDefined();
+    expect(result!.userId).toBe('user-123');
+    expect(result!.email).toBe('test@example.com');
   });
 
   it('should reject an invalid token', async () => {
     const result = await handler.execute({ accessToken: 'invalid-token' });
-    expect(result.valid).toBe(false);
-    expect(result.userId).toBe('');
+    expect(result).toBeNull();
   });
 
   it('should reject a refresh token used as access token', async () => {
@@ -42,6 +41,6 @@ describe('ValidateSession Query Handler', () => {
     });
 
     const result = await handler.execute({ accessToken: tokenPair.refreshToken });
-    expect(result.valid).toBe(false);
+    expect(result).toBeNull();
   });
 });

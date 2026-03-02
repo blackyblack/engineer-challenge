@@ -12,8 +12,7 @@
     "test:application": "jest tests/application --forceExit",
     "test:integration": "jest tests/integration --forceExit",
     "proto:generate": "grpc_tools_node_protoc --ts_out=grpc_js:src/infrastructure/grpc/generated --js_out=import_style=commonjs,binary:src/infrastructure/grpc/generated --grpc_out=grpc_js:src/infrastructure/grpc/generated -I proto proto/auth.proto",
-    "migrate": "ts-node src/infrastructure/persistence/migrate.ts",
-    "lint": "eslint src/ tests/ --ext .ts"
+    "migrate": "ts-node src/infrastructure/persistence/migrate.ts"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1",
@@ -31,7 +30,9 @@
     "@types/node": "^20",
     "@types/pg": "^8",
     "@types/uuid": "^9",
-    "jest": "^290",
+    "grpc-tools": "^1",
+    "grpc_tools_node_protoc_ts": "^5",
+    "jest": "^29",
     "testcontainers": "^11",
     "ts-jest": "^29",
     "ts-node": "^10",

@@ -1,6 +1,6 @@
 import { Email, InvalidEmailError } from '../../src/domain/identity/model/email';
 
-describe('Email Value Object', () => {
+describe('Email Model', () => {
   it('should create a valid email', () => {
     const email = Email.create('User@Example.COM');
     expect(email.value).toBe('user@example.com');

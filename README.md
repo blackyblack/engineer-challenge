@@ -159,7 +159,7 @@ src/
 
 ### User Aggregate
 - Email уникален
-- Статусы: `PENDING` -> `ACTIVE` -> `LOCKED`
+- Статусы: `ACTIVE` -> `LOCKED`
 - После 5 неудачных попыток входа — автоматическая блокировка (`LOCKED`)
 - Успешная авторизация сбрасывает счётчик неудачных попыток
 
@@ -216,7 +216,6 @@ npm run test:integration
 
 Система генерирует доменные события:
 - `UserRegistered` — при успешной регистрации
-- `UserActivated` — при активации аккаунта
 - `UserLocked` — при блокировке из-за brute force
 - `UserAuthenticated` — при успешном входе
 - `AuthenticationFailed` — при неудачной попытке

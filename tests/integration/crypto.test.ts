@@ -2,7 +2,7 @@ import { JwtTokenProvider } from '../../src/infrastructure/crypto/jwt-token-prov
 import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/argon2-password-hasher';
 import { InvalidTokenError } from '../../src/domain/authentication';
 
-describe('JWT Token Provider (jose)', () => {
+describe('JWT Token Provider', () => {
   const provider = new JwtTokenProvider('access-secret', 'refresh-secret');
 
   it('should issue and verify access token', async () => {
@@ -41,7 +41,7 @@ describe('JWT Token Provider (jose)', () => {
   });
 });
 
-describe('Argon2 Password Hasher', () => {
+describe('Password Hasher', () => {
   const hasher = new Argon2PasswordHasher();
 
   it('should hash and verify password', async () => {

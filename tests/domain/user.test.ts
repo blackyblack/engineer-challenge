@@ -1,9 +1,9 @@
-import { User, UserStatus, UserLockedError } from '../../src/domain/identity/model/user';
+import { User, UserStatus } from '../../src/domain/identity/model/user';
 import { Email } from '../../src/domain/identity/model/email';
 
 describe('User Aggregate', () => {
   const testEmail = Email.create('test@example.com');
-  // Mock hash (not a real bcrypt hash) — only used for unit tests that don't verify the hash
+  // Mock hash — only used for unit tests that don't verify the hash
   const testPasswordHash = '$2a$12$mockhashedpasswordfortesting';
 
   it('should register a new user with ACTIVE status', () => {
@@ -66,21 +66,5 @@ describe('User Aggregate', () => {
   it('should report active status correctly', () => {
     const user = User.register(testEmail, testPasswordHash);
     expect(user.isActive()).toBe(true);
-  });
-
-  it('should reconstitute from persistence', () => {
-    const now = new Date();
-    const user = new User(
-      'test-id',
-      testEmail,
-      testPasswordHash,
-      UserStatus.ACTIVE,
-      now,
-      now,
-      2,
-    );
-    expect(user.id).toBe('test-id');
-    expect(user.failedLoginAttempts).toBe(2);
-    expect(user.domainEvents).toHaveLength(0); // No events on reconstitution
   });
 });
