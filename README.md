@@ -1,110 +1,240 @@
-# Advanced Engineer Challenge
+# Auth Module
 
-Этот репозиторий — инженерный челлендж для кандидатов на backend/fullstack позиции.
+Модуль аутентификации пользователей.
 
-Задача специально узкая по продукту, но широкая по архитектуре: мы оцениваем не «как быстро собрать формы логина», а то, как вы проектируете систему.
+## Поддерживаемые сценарии
 
-## Контекст
+1. **Регистрация** — создание нового аккаунта с валидацией почты и пароля
+2. **Авторизация** — вход по email/пароль с выдачей JWT-токенов (access + refresh)
+3. **Восстановление пароля** — запрос reset-токена + смена пароля
 
-Вам нужно реализовать модуль аутентификации для 3 пользовательских сценариев:
-1. Регистрация
-2. Авторизация
-3. Восстановление пароля
+## Быстрый старт
 
-UI-дизайн (https://www.figma.com/design/31KetUbya482vMSGgyiNIf/Orbitto-%7C-Service--Copy-?node-id=102-12806&t=TMlkJ3c3j3vJF5fb-4) уже подготовлен и будет отправной точкой для клиентской части.
+### Предварительные требования
 
-## Что важно
+- Node.js 20+
+- Docker и Docker Compose (для полного стенда)
 
-Решение должно демонстрировать инженерную зрелость:
-- DDD (явные bounded context, модель домена, язык предметной области)
-- CQRS (разделение команд и запросов)
-- IaC (воспроизводимое окружение инфраструктуры)
-- Осознанный выбор языка и стека (язык выбираете на своё усмотрение, но выбор нужно аргументировать)
+### Запуск тестов (с запущенным Docker сервисом)
 
-`CRUD + controller + stock REST auth по документации` не считается целевым уровнем решения для этого челленджа.
+```bash
+npm install
+npm test
+```
 
-## Обязательные требования
+### Запуск полного стенда
 
-1. Архитектура
-- Покажите доменную модель и границы контекстов.
-- Выделите command side и query side (даже если в упрощенном виде).
-- Опишите ключевые инварианты и бизнес-правила (например, правила reset-token, валидация пароля, ограничения на повторную отправку).
+```bash
+cd infra
+docker compose up --build
+```
 
-2. API/протокол взаимодействия
-- Предпочтительный уровень: `gRPC` и/или `GraphQL`.
-- `Только REST` допустим исключительно при сильной архитектурной аргументации, иначе это будет существенным минусом.
+Это поднимет:
+- **PostgreSQL** на порту `5432`
+- **Auth gRPC Service** на порту `50051` (gRPC) и `9090` (метрики/health)
+- **Prometheus** на порту `9091`
 
-3. Infrastructure as Code
-- Запуск окружения должен быть описан кодом.
-- Минимум: локально воспроизводимый стенд (например, Docker Compose).
-- Плюс в оценке: Terraform/Kubernetes manifests/Helm.
+## Выбор стека и аргументация
 
-4. Безопасность
-- Без хранения паролей в открытом виде.
-- Корректная работа с токенами/сессиями.
-- Защита базовых auth-флоу (rate limiting, expiration, replay/abuse considerations).
+**TypeScript**: Строгая типизация, простое тестирование через моки, большой выбор библиотек, быстрый старт. Альтернативы:
+Go (меньше выразительности для DDD), Rust (тяжело быстро собрать прототип, сложнее тестирование)
 
-5. Наблюдаемость и качество
-- Логи, метрики или трейсинг (минимум один из блоков).
-- Тесты критичных участков (доменные правила, auth-флоу, интеграционные точки).
+**gRPC**: Строго типизированный контракт (proto), эффективная сериализация. Альтернативы: REST (менее строгий контракт, не рекомендован в ТЗ), GraphQL (не нужен для авторизации)
 
-6. Технологические решения
-- Язык программирования и фреймворки выбираете самостоятельно.
-- В `README` обязательно зафиксируйте, почему выбрали именно этот стек и какие альтернативы рассматривали.
+**argon2**: Современная крипто библиотека. Альтернатвы: bcrypt (устаревший, но надёжный), scrypt
 
-## Ограничения и анти-паттерны
+**jose**: Современная JWT-библиотека, поддержка ESM. Альтернативы: jsonwebtoken (legacy, не ESM), paseto (менее распространён)
 
-Следующие подходы считаются слабым решением:
-- Полностью «коробочный» auth-провайдер без вашей архитектурной проработки домена.
-- Копирование шаблонного туториала без обоснования trade-offs.
-- Монолитный слой handlers/controllers без разделения доменной и инфраструктурной логики.
+**PostgreSQL**: Надёжное хранилище, подходит для аутентификации. Альтернативы: MongoDB (документная модель не очень подходит), SQLite (не для прода), MySQL (неплохой вариант, но сложнее масштабировать)
 
-Можно использовать библиотеки для криптографии, JWT, транспорта и т.д., но архитектурные решения должны быть вашими.
+**Pino**: Популярный логгер
 
-## Что нужно сдать
+**testcontainers**: Тесты с реальной БД, нет расхождения между тестами и продом. Альтернативы: In-memory (скрывают SQL-ошибки), SQLite (другой диалект)
 
-1. Исходный код в вашем fork.
-2. Обновленный `README` в вашем fork с:
-- как запустить проект;
-- архитектурная схема (можно Mermaid/PlantUML);
-- объяснение, где в решении DDD, CQRS и IaC;
-- ключевые компромиссы (trade-offs);
-- что сделали бы следующим шагом в production-версии.
-3. Минимальный набор тестов и инструкции по их запуску.
+**prom-client**: Популярный Prometheus клиент
 
-## Формат выполнения
+## Архитектура
 
-1. Сделайте fork этого репозитория.
-2. Пройдите Pinterest-челлендж:
-- соберите `moodboard`;
-- соберите `anti-moodboard`.
-3. Реализуйте решение в своем fork.
-4. Оформите результат в `README`.
-5. Отправьте 3 ссылки в отклике:
-- ссылка на `moodboard`;
-- ссылка на `anti-moodboard`;
-- ссылка на ваш fork.
+### Доменная модель и границы контекстов
 
-## Использование ИИ
+```mermaid
+graph TB
+    subgraph "Identity Context"
+        User["User (Aggregate Root)"]
+        Email["Email (Value Object)"]
+        Password["Password (Value Object)"]
+        User --> Email
+        User --> Password
+    end
 
-- Использование ИИ-инструментов в рамках челленджа разрешено.
-- Если используете ИИ, добавьте в ваш fork папку `.agents`, чтобы было видно, каким образом вы строили процесс решения.
+    subgraph "Authentication Context"
+        AuthToken["AuthTokenPair (Value Object)"]
+        TokenService["TokenService (Port)"]
+        PasswordHasher["PasswordHasher (Port)"]
+    end
 
-## Критерии оценки
+    subgraph "Password Recovery Context"
+        ResetToken["ResetToken (Entity)"]
+        ResetPolicy["ResetPolicy (Port)"]
+        ResetTokenRepo["ResetTokenRepository (Port)"]
+    end
 
-1. Архитектурное мышление (DDD/CQRS/IaC).
-2. Качество инженерных решений и аргументация trade-offs.
-3. Надежность и безопасность auth-флоу.
-4. Чистота кода и тестовое покрытие критичных сценариев.
-5. Операбельность: насколько легко поднять и проверить решение.
+    User -.->|referenced by| AuthToken
+    User -.->|referenced by| ResetToken
+```
 
-## Бонусные сигналы
+### CQRS — Command и Query Side
 
-- Event-driven взаимодействие между компонентами.
-- Service mesh / policy-driven networking (если уместно и обосновано).
-- Продуманная стратегия эволюции схемы данных и backward compatibility.
-- ADR (Architecture Decision Records) для ключевых решений.
+```mermaid
+graph LR
+    subgraph "Command Side (Write)"
+        RC[RegisterUser]
+        AC[AuthenticateUser]
+        RPC[RequestPasswordReset]
+        RSC[ResetPassword]
+    end
 
-## Важно
+    subgraph "Query Side (Read)"
+        VS[ValidateSession]
+    end
 
-Нас интересует не «идеальный продакшен за вечер», а качество инженерного мышления и способность строить систему осознанно.
+    subgraph "Domain"
+        U[User Aggregate]
+        RT[ResetToken]
+        TS[TokenService]
+    end
+
+    RC --> U
+    AC --> U
+    AC --> TS
+    RPC --> RT
+    RSC --> U
+    RSC --> RT
+    VS --> TS
+```
+
+**Command handlers**:
+- `RegisterUserHandler` — валидация, хеширование, создание User aggregate
+- `AuthenticateUserHandler` — проверка логина/пароля, выдача токенов, учёт попыток
+- `RequestPasswordResetHandler` — генерация reset token, rate limiting
+- `ResetPasswordHandler` — валидация токена, смена пароля
+
+**Query handlers**:
+- `ValidateSessionHandler` — проверка access token
+
+### Слои архитектуры
+
+```
+src/
+├── domain/                      # Чистый домен (нет зависимостей от инфраструктуры)
+│   ├── identity/                # Bounded Context: Identity
+│   │   ├── model/               # User aggregate, Email/Password value objects
+│   │   ├── repository/          # Port: UserRepository interface
+│   │   └── events/              # Domain events: UserRegistered, UserLocked
+│   ├── authentication/          # Bounded Context: Authentication
+│   │   ├── model/               # AuthTokenPair value object
+│   │   ├── service/             # Ports: TokenService, PasswordHasher
+│   │   └── events/              # Domain events: UserAuthenticated
+│   └── password-recovery/       # Bounded Context: Password Recovery
+│       ├── model/               # ResetToken entity
+│       ├── repository/          # Port: ResetTokenRepository
+│       └── service/             # Port: ResetPolicy
+├── application/                 # Application layer
+│   ├── commands/                # Command handlers (write side)
+│   └── queries/                 # Query handlers (read side)
+├── infrastructure/              # Adapters
+│   ├── crypto/                  # Argon2PasswordHasher, JwtTokenProvider
+│   ├── persistence/             # PostgreSQL repositories
+│   ├── grpc/                    # gRPC server
+│   ├── observability/           # Pino logger, Prometheus metrics
+│   └── rate-limiting/           # InMemoryRateLimiter
+```
+
+## Ключевые инварианты и бизнес-правила
+
+### Пароль
+- Минимум 8 символов
+- Обязательно: uppercase, lowercase, цифра, спецсимвол
+- Хранится только хеш
+
+### User Aggregate
+- Email уникален
+- Статусы: `ACTIVE` -> `LOCKED`
+- После 5 неудачных попыток входа — автоматическая блокировка (`LOCKED`)
+- Успешная авторизация сбрасывает счётчик неудачных попыток
+
+### Reset Token
+- Криптографически безопасный (32 байта)
+- TTL: 1 час
+- Однократное использование
+- При новом запросе — все старые токены пользователя инвалидируются
+
+### Rate Limiting
+- Login: максимум 10 попыток за 15 минут, кулдаун 1 сек
+- Register: максимум 5 за час, кулдаун 5 сек
+- Password Reset: максимум 3 запроса за час, кулдаун 60 сек
+
+### Предотвращение email enumeration
+- Запрос на восстановление пароля для несуществующей почты возвращает тот же ответ, что и для существующей
+
+### JWT
+- Access token: 15 мин TTL, подписан отдельным секретом
+- Refresh token: 7 дней TTL, подписан отдельным секретом
+- Тип токена (`access`/`refresh`) закодирован в payload — нельзя использовать refresh вместо access
+
+## gRPC API
+
+Определение в `proto/auth.proto`
+
+
+## Наблюдаемость
+
+- **Метрики**: Prometheus (`/metrics` на порту 9090)
+  - `auth_registration_total` — счётчик регистраций
+  - `auth_login_total` — счётчик логинов
+  - `auth_password_reset_request_total` — счётчик запросов на сброс
+  - `auth_grpc_request_duration_seconds` — latency histogram
+- **Health check**: `/health` на порту 9090
+
+## Тесты
+
+```bash
+# Все тесты
+npm test
+
+# Только доменные тесты
+npm run test:domain
+
+# Только application-тесты
+npm run test:application
+
+# Только интеграционные
+npm run test:integration
+```
+
+## Domain Events
+
+Система генерирует доменные события:
+- `UserRegistered` — при успешной регистрации
+- `UserLocked` — при блокировке из-за brute force
+- `UserAuthenticated` — при успешном входе
+- `AuthenticationFailed` — при неудачной попытке
+- `PasswordResetRequested` — при запросе сброса
+- `PasswordResetCompleted` — при успешном сбросе
+
+В текущей реализации события хранятся в памяти. В проде можно подключить очередь событий (RabbitMQ/Kafka) для реакции на события (отправка почты, аудит).
+
+## Ключевые компромиссы
+
+1. In-memory rate limiter
+2. Testcontainers для тестов
+3. JWT без блеклистинга
+
+## Следующие шаги для будущей версии
+
+1. **Email-сервис** — отправка reset-ссылок через email
+2. **CI/CD** — автоматические тесты, сканирование уязвимостей, деплой
+3. **Redis rate limiter** — рейт лимит с помощью Redis для поддержки масштабирования
+4. **Token blacklist** — поддержка logout пользователя
+5. **Refresh token rotation** — ротация refresh токена при каждом использовании
+6. **Account recovery** — дополнительные методы верификации (SMS, TOTP)

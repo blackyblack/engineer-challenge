@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: auth
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Auth Module gRPC Service
+  auth-service:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+    environment:
+      GRPC_PORT: "50051"
+      METRICS_PORT: "9090"
+      DATABASE_URL: "postgresql://auth:auth@postgres:5432/auth_db"
+      JWT_ACCESS_SECRET: "super-secret-access-key-change-in-prod"
+      JWT_REFRESH_SECRET: "super-secret-refresh-key-change-in-prod"
+      LOG_LEVEL: "info"
+    ports:
+      - "50051:50051"
+      - "9090:9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Prometheus (metrics collection)
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9091:9090"
+    depends_on:
+      - auth-service
+
+volumes:
+  pgdata:

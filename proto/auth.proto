@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package auth;
+
+/**
+ * Auth Service — API Definition
+ */
+service AuthService {
+  // Commands (write side)
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+
+  // Queries (read side)
+  rpc ValidateSession(ValidateSessionRequest) returns (ValidateSessionResponse);
+}
+
+// --- Identity Context: Registration ---
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message RegisterResponse {
+  string user_id = 1;
+  string email = 2;
+}
+
+// --- Authentication Context: Login ---
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
+// --- Password Recovery Context ---
+
+message RequestPasswordResetRequest {
+  string email = 1;
+}
+
+message RequestPasswordResetResponse {
+  // Human-readable status message indicating that the reset process was initiated.
+  string message = 1;
+}
+
+message ResetPasswordRequest {
+  string token = 1;
+  string new_password = 2;
+}
+
+message ResetPasswordResponse {
+  string message = 1;
+}
+
+// --- Authentication Context: Session Validation ---
+
+message ValidateSessionRequest {
+  string access_token = 1;
+}
+
+message ValidateSessionResponse {
+  string user_id = 1;
+  string email = 2;
+}
