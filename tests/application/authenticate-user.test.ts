@@ -52,8 +52,6 @@ describe('AuthenticateUser Command Handler', () => {
 
     expect(result.accessToken).toBeDefined();
     expect(result.refreshToken).toBeDefined();
-    expect(result.accessTokenExpiresAt).toBeInstanceOf(Date);
-    expect(result.refreshTokenExpiresAt).toBeInstanceOf(Date);
   });
 
   it('should reject invalid password', async () => {

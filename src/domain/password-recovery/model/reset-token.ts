@@ -12,7 +12,7 @@ import { DomainEvent } from '../../identity/model/user';
  * - A user can have at most one active (unused, non-expired) reset token
  */
 export class ResetToken {
-  private constructor(
+  constructor(
     public readonly id: string,
     public readonly userId: string,
     public readonly token: string,
@@ -29,17 +29,6 @@ export class ResetToken {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + ResetToken.TOKEN_TTL_MS);
     return new ResetToken(id, userId, token, expiresAt, false, now);
-  }
-
-  static reconstitute(
-    id: string,
-    userId: string,
-    token: string,
-    expiresAt: Date,
-    used: boolean,
-    createdAt: Date,
-  ): ResetToken {
-    return new ResetToken(id, userId, token, expiresAt, used, createdAt);
   }
 
   get used(): boolean {

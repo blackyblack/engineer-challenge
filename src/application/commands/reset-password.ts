@@ -4,7 +4,6 @@ import {
   ResetTokenRepository,
   ResetTokenNotFoundError,
   ResetTokenExpiredError,
-  ResetTokenAlreadyUsedError,
 } from '../../domain/password-recovery';
 import { Logger } from '../../infrastructure/observability/logger';
 

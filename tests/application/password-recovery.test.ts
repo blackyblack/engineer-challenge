@@ -4,10 +4,10 @@ import { RegisterUserHandler } from '../../src/application/commands/register-use
 import { AuthenticateUserHandler } from '../../src/application/commands/authenticate-user';
 import { PgUserRepository } from '../../src/infrastructure/persistence/pg-user-repository';
 import { PgResetTokenRepository } from '../../src/infrastructure/persistence/pg-reset-token-repository';
-import { InMemoryResetPolicy } from '../../src/infrastructure/persistence/in-memory-reset-policy';
+import { InMemoryResetPolicy } from '../../src/infrastructure/rate-limiting/reset-policy';
 import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/argon2-password-hasher';
 import { JwtTokenProvider } from '../../src/infrastructure/crypto/jwt-token-provider';
-import { ResetTokenNotFoundError, ResetRateLimitExceededError } from '../../src/domain/password-recovery';
+import { ResetTokenNotFoundError } from '../../src/domain/password-recovery';
 import { WeakPasswordError } from '../../src/domain/identity';
 import { Logger } from '../../src/infrastructure/observability/logger';
 import { Pool } from 'pg';

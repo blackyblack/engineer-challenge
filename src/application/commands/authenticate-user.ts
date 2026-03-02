@@ -1,4 +1,4 @@
-import { Email, UserRepository, UserNotFoundError } from '../../domain/identity';
+import { Email, UserRepository } from '../../domain/identity';
 import { PasswordHasher, TokenService, AuthTokenPair } from '../../domain/authentication';
 import { Logger } from '../../infrastructure/observability/logger';
 

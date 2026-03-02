@@ -1,4 +1,4 @@
-import { TokenService, TokenPayload, InvalidTokenError } from '../../domain/authentication';
+import { TokenService } from '../../domain/authentication';
 import { Logger } from '../../infrastructure/observability/logger';
 
 /**
@@ -13,7 +13,6 @@ export interface ValidateSessionQuery {
 export interface SessionInfo {
   userId: string;
   email: string;
-  valid: boolean;
 }
 
 export class ValidateSessionHandler {
@@ -22,21 +21,16 @@ export class ValidateSessionHandler {
     private readonly logger: Logger,
   ) {}
 
-  async execute(query: ValidateSessionQuery): Promise<SessionInfo> {
+  async execute(query: ValidateSessionQuery): Promise<SessionInfo | null> {
     try {
       const payload = await this.tokenService.verifyAccessToken(query.accessToken);
       return {
         userId: payload.userId,
         email: payload.email,
-        valid: true,
       };
     } catch (error) {
       this.logger.warn('Session validation failed', { error: (error as Error).message });
-      return {
-        userId: '',
-        email: '',
-        valid: false,
-      };
+      return null;
     }
   }
 }

@@ -1,17 +1,15 @@
 /**
- * AuthToken Value Object — Authentication Bounded Context
+ * AuthToken Value Object
  *
  * Represents a pair of JWT tokens (access + refresh).
  * Invariants:
- * - Access token has short TTL (15 minutes)
- * - Refresh token has longer TTL (7 days)
+ * - Access token has short TTL
+ * - Refresh token has longer TTL
  * - Tokens are signed and verifiable
  */
 export interface AuthTokenPair {
   readonly accessToken: string;
   readonly refreshToken: string;
-  readonly accessTokenExpiresAt: Date;
-  readonly refreshTokenExpiresAt: Date;
 }
 
 export interface TokenPayload {

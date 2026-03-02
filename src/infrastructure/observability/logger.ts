@@ -1,9 +1,3 @@
-/**
- * Logger Interface
- *
- * Abstraction over logging implementation.
- * Uses structured logging (key-value pairs).
- */
 export interface Logger {
   info(message: string, context?: Record<string, unknown>): void;
   warn(message: string, context?: Record<string, unknown>): void;

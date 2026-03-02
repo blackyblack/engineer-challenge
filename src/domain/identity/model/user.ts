@@ -27,7 +27,7 @@ export interface DomainEvent {
 export class User {
   public readonly domainEvents: DomainEvent[] = [];
 
-  private constructor(
+  constructor(
     public readonly id: string,
     public readonly email: Email,
     private _passwordHash: string,
@@ -63,21 +63,6 @@ export class User {
     const user = new User(id, email, passwordHash, UserStatus.ACTIVE, now, now, 0);
     user.domainEvents.push(new UserRegistered(id, email.value, now));
     return user;
-  }
-
-  /**
-   * Reconstitute from persistence (no events emitted).
-   */
-  static reconstitute(
-    id: string,
-    email: Email,
-    passwordHash: string,
-    status: UserStatus,
-    createdAt: Date,
-    updatedAt: Date,
-    failedLoginAttempts: number,
-  ): User {
-    return new User(id, email, passwordHash, status, createdAt, updatedAt, failedLoginAttempts);
   }
 
   activate(): void {

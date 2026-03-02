@@ -1,5 +1,5 @@
 import { ResetPolicy } from '../../domain/password-recovery/service/reset-policy';
-import { InMemoryRateLimiter, RateLimiterConfig } from '../rate-limiting/rate-limiter';
+import { InMemoryRateLimiter, RateLimiterConfig } from './rate-limiter';
 
 /**
  * In-Memory Reset Policy implementation
@@ -14,6 +14,7 @@ export class InMemoryResetPolicy implements ResetPolicy {
   constructor(config?: RateLimiterConfig) {
     this.rateLimiter = new InMemoryRateLimiter(
       config || {
+        // TODO: move to constants
         maxRequests: 3,
         windowMs: 60 * 60 * 1000, // 1 hour
         cooldownMs: 60 * 1000, // 60 seconds

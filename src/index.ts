@@ -10,7 +10,7 @@ import { Argon2PasswordHasher } from './infrastructure/crypto/argon2-password-ha
 import { JwtTokenProvider } from './infrastructure/crypto/jwt-token-provider';
 import { PgUserRepository } from './infrastructure/persistence/pg-user-repository';
 import { PgResetTokenRepository } from './infrastructure/persistence/pg-reset-token-repository';
-import { InMemoryResetPolicy } from './infrastructure/persistence/in-memory-reset-policy';
+import { InMemoryResetPolicy } from './infrastructure/rate-limiting/reset-policy';
 import { createLogger } from './infrastructure/observability/logger';
 import { metricsRegistry } from './infrastructure/observability/metrics';
 import * as http from 'http';

@@ -70,7 +70,7 @@ describe('User Aggregate', () => {
 
   it('should reconstitute from persistence', () => {
     const now = new Date();
-    const user = User.reconstitute(
+    const user = new User(
       'test-id',
       testEmail,
       testPasswordHash,

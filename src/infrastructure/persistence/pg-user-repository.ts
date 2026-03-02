@@ -3,11 +3,6 @@ import { User, UserStatus } from '../../domain/identity/model/user';
 import { Email } from '../../domain/identity/model/email';
 import { UserRepository } from '../../domain/identity/repository/user-repository';
 
-/**
- * PostgreSQL User Repository
- *
- * Production-grade persistence for the User aggregate.
- */
 export class PgUserRepository implements UserRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -42,13 +37,8 @@ export class PgUserRepository implements UserRepository {
     );
   }
 
-  async existsByEmail(email: Email): Promise<boolean> {
-    const result = await this.pool.query('SELECT 1 FROM users WHERE email = $1', [email.value]);
-    return result.rows.length > 0;
-  }
-
   private toDomain(row: Record<string, unknown>): User {
-    return User.reconstitute(
+    return new User(
       row.id as string,
       Email.create(row.email as string),
       row.password_hash as string,

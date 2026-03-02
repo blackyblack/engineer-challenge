@@ -40,7 +40,7 @@ export class RegisterUserHandler {
     Password.create(command.password);
 
     // 3. Check uniqueness
-    const exists = await this.userRepository.existsByEmail(email);
+    const exists = await this.userRepository.findByEmail(email);
     if (exists) {
       throw new DuplicateEmailError(email.value);
     }

@@ -1,10 +1,10 @@
-# Auth Module — DDD + CQRS + gRPC
+# Auth Module
 
-Модуль аутентификации, реализованный на TypeScript с применением Domain-Driven Design, CQRS и gRPC.
+Модуль аутентификации пользователей.
 
 ## Поддерживаемые сценарии
 
-1. **Регистрация** — создание нового аккаунта с валидацией email и пароля
+1. **Регистрация** — создание нового аккаунта с валидацией почты и пароля
 2. **Авторизация** — вход по email/пароль с выдачей JWT-токенов (access + refresh)
 3. **Восстановление пароля** — запрос reset-токена + смена пароля
 
@@ -15,14 +15,14 @@
 - Node.js 20+
 - Docker и Docker Compose (для полного стенда)
 
-### Запуск тестов (без инфраструктуры)
+### Запуск тестов (с запущенным Docker сервисом)
 
 ```bash
 npm install
 npm test
 ```
 
-### Запуск полного стенда (Docker Compose)
+### Запуск полного стенда
 
 ```bash
 cd infra
@@ -36,16 +36,22 @@ docker compose up --build
 
 ## Выбор стека и аргументация
 
-| Решение | Почему | Альтернативы |
-|---------|--------|-------------|
-| **TypeScript** | Строгая типизация, явные интерфейсы для domain ports, широкая экосистема | Go (меньше выразительности для DDD), Rust (overhead для прототипа) |
-| **gRPC** | Строго типизированный контракт (proto), эффективная сериализация, code generation | REST (менее строгий контракт), GraphQL (overkill для auth) |
-| **argon2** | Argon2id — победитель Password Hashing Competition, устойчив к GPU и side-channel атакам | bcrypt (устаревший, но надёжный), scrypt |
-| **jose** | Современная JWT-библиотека, ESM-native, использует Web Crypto API, нет устаревших зависимостей | jsonwebtoken (legacy, не ESM), paseto (менее распространён) |
-| **PostgreSQL** | Надёжное ACID-хранилище, подходит для identity data | MongoDB (нет нужды в document model), SQLite (не для prod) |
-| **Pino** | Быстрый structured logging, JSON-формат для агрегации | Winston (медленнее), Bunyan (устаревший) |
-| **testcontainers** | Тесты с реальной БД, нет расхождения между тестами и production | In-memory mocks (скрывают SQL-ошибки), SQLite (другой диалект) |
-| **prom-client** | Prometheus-native метрики, де-факто стандарт для K8s | StatsD, OpenTelemetry (более тяжёлый) |
+**TypeScript**: Строгая типизация, простое тестирование через моки, большой выбор библиотек, быстрый старт. Альтернативы:
+Go (меньше выразительности для DDD), Rust (тяжело быстро собрать прототип, сложнее тестирование)
+
+**gRPC**: Строго типизированный контракт (proto), эффективная сериализация. Альтернативы: REST (менее строгий контракт, не рекомендован в ТЗ), GraphQL (не нужен для авторизации)
+
+**argon2**: Современная крипто библиотека. Альтернатвы: bcrypt (устаревший, но надёжный), scrypt
+
+**jose**: Современная JWT-библиотека, поддержка ESM. Альтернативы: jsonwebtoken (legacy, не ESM), paseto (менее распространён)
+
+**PostgreSQL**: Надёжное хранилище, подходит для аутентификации. Альтернативы: MongoDB (документная модель не очень подходит), SQLite (не для прода), MySQL (неплохой вариант, но сложнее масштабировать)
+
+**Pino**: Популярный логгер
+
+**testcontainers**: Тесты с реальной БД, нет расхождения между тестами и продом. Альтернативы: In-memory (скрывают SQL-ошибки), SQLite (другой диалект)
+
+**prom-client**: Популярный Prometheus клиент
 
 ## Архитектура
 
@@ -107,14 +113,14 @@ graph LR
     VS --> TS
 ```
 
-**Command handlers** (write side):
+**Command handlers**:
 - `RegisterUserHandler` — валидация, хеширование, создание User aggregate
-- `AuthenticateUserHandler` — проверка credentials, выдача токенов, учёт failed attempts
-- `RequestPasswordResetHandler` — генерация reset token, rate limiting, предотвращение email enumeration
+- `AuthenticateUserHandler` — проверка логина/пароля, выдача токенов, учёт попыток
+- `RequestPasswordResetHandler` — генерация reset token, rate limiting
 - `ResetPasswordHandler` — валидация токена, смена пароля
 
-**Query handlers** (read side):
-- `ValidateSessionHandler` — проверка JWT access token
+**Query handlers**:
+- `ValidateSessionHandler` — проверка access token
 
 ### Слои архитектуры
 
@@ -133,13 +139,13 @@ src/
 │       ├── model/               # ResetToken entity
 │       ├── repository/          # Port: ResetTokenRepository
 │       └── service/             # Port: ResetPolicy
-├── application/                 # Application layer (CQRS handlers)
+├── application/                 # Application layer
 │   ├── commands/                # Command handlers (write side)
 │   └── queries/                 # Query handlers (read side)
-├── infrastructure/              # Adapters (implementations of ports)
-│   ├── crypto/                  # Argon2PasswordHasher, JwtTokenProvider (jose)
+├── infrastructure/              # Adapters
+│   ├── crypto/                  # Argon2PasswordHasher, JwtTokenProvider
 │   ├── persistence/             # PostgreSQL repositories
-│   ├── grpc/                    # gRPC server (transport adapter)
+│   ├── grpc/                    # gRPC server
 │   ├── observability/           # Pino logger, Prometheus metrics
 │   └── rate-limiting/           # InMemoryRateLimiter
 ```
@@ -149,66 +155,40 @@ src/
 ### Пароль
 - Минимум 8 символов
 - Обязательно: uppercase, lowercase, цифра, спецсимвол
-- Хранится **только** Argon2id-хеш (memory-hard, защита от GPU-атак)
+- Хранится только хеш
 
 ### User Aggregate
-- Email уникален (проверка на уровне repository)
-- Статусы: `PENDING` → `ACTIVE` → `LOCKED`
+- Email уникален
+- Статусы: `PENDING` -> `ACTIVE` -> `LOCKED`
 - После 5 неудачных попыток входа — автоматическая блокировка (`LOCKED`)
 - Успешная авторизация сбрасывает счётчик неудачных попыток
 
 ### Reset Token
-- Криптографически безопасный (32 bytes, `crypto.randomBytes`)
+- Криптографически безопасный (32 байта)
 - TTL: 1 час
-- Однократное использование (одноразовый)
+- Однократное использование
 - При новом запросе — все старые токены пользователя инвалидируются
 
 ### Rate Limiting
-- Login: max 10 попыток за 15 минут, cooldown 1 сек
-- Register: max 5 за час, cooldown 5 сек
-- Password Reset: max 3 запроса за час, cooldown 60 сек
+- Login: максимум 10 попыток за 15 минут, кулдаун 1 сек
+- Register: максимум 5 за час, кулдаун 5 сек
+- Password Reset: максимум 3 запроса за час, кулдаун 60 сек
 
 ### Предотвращение email enumeration
-- Запрос на восстановление пароля для несуществующего email возвращает тот же ответ, что и для существующего
+- Запрос на восстановление пароля для несуществующей почты возвращает тот же ответ, что и для существующей
 
-### JWT Tokens
+### JWT
 - Access token: 15 мин TTL, подписан отдельным секретом
 - Refresh token: 7 дней TTL, подписан отдельным секретом
 - Тип токена (`access`/`refresh`) закодирован в payload — нельзя использовать refresh вместо access
 
 ## gRPC API
 
-Определение в `proto/auth.proto`:
+Определение в `proto/auth.proto`
 
-| RPC | Тип | Описание |
-|-----|-----|----------|
-| `Register` | Command | Регистрация нового пользователя |
-| `Login` | Command | Авторизация, выдача token pair |
-| `RequestPasswordReset` | Command | Запрос reset-токена |
-| `ResetPassword` | Command | Смена пароля по reset-токену |
-| `ValidateSession` | Query | Проверка access token |
-
-## Infrastructure as Code
-
-| Инструмент | Файл | Что делает |
-|------------|------|------------|
-| **Docker Compose** | `infra/docker-compose.yml` | Полный локальный стенд (PostgreSQL + Auth + Prometheus) |
-| **Dockerfile** | `infra/docker/Dockerfile` | Multi-stage build, non-root user |
-
-## Безопасность
-
-- ✅ Пароли хранятся как Argon2id-хеши (memory-hard, устойчив к GPU и side-channel атакам)
-- ✅ JWT через jose (Web Crypto API, ESM-native, separate secrets для access и refresh)
-- ✅ Rate limiting на все auth-эндпоинты
-- ✅ Блокировка аккаунта при brute force (5 попыток)
-- ✅ Предотвращение email enumeration при password reset
-- ✅ Одноразовые reset-токены с TTL
-- ✅ Non-root user в Docker контейнере
-- ✅ Secrets через environment variables
 
 ## Наблюдаемость
 
-- **Логи**: Pino (structured JSON), уровни info/warn/error/debug
 - **Метрики**: Prometheus (`/metrics` на порту 9090)
   - `auth_registration_total` — счётчик регистраций
   - `auth_login_total` — счётчик логинов
@@ -232,26 +212,9 @@ npm run test:application
 npm run test:integration
 ```
 
-**68 тестов** в 10 test suites:
-
-> **Требование**: Docker для application-тестов (testcontainers запускает PostgreSQL)
-
-| Suite | Тесты | Что покрывает |
-|-------|-------|---------------|
-| `email.test.ts` | 7 | Валидация email, нормализация, сравнение |
-| `password.test.ts` | 7 | Правила сложности пароля |
-| `user.test.ts` | 9 | User aggregate: регистрация, блокировка, смена пароля |
-| `reset-token.test.ts` | 7 | TTL, одноразовость, криптографическая уникальность |
-| `rate-limiter.test.ts` | 4 | Sliding window, cooldown, expiration |
-| `register-user.test.ts` | 5 | Регистрация, дубликаты, валидация (PostgreSQL via testcontainers) |
-| `authenticate-user.test.ts` | 7 | Логин, блокировка, сброс попыток (PostgreSQL via testcontainers) |
-| `password-recovery.test.ts` | 7 | Полный flow: запрос → сброс → вход (PostgreSQL via testcontainers) |
-| `validate-session.test.ts` | 3 | Проверка JWT (jose), отклонение невалидных |
-| `crypto.test.ts` | 11 | JWT signing/verification (jose), Argon2id hashing |
-
 ## Domain Events
 
-Система генерирует доменные события (event-driven):
+Система генерирует доменные события:
 - `UserRegistered` — при успешной регистрации
 - `UserActivated` — при активации аккаунта
 - `UserLocked` — при блокировке из-за brute force
@@ -260,26 +223,19 @@ npm run test:integration
 - `PasswordResetRequested` — при запросе сброса
 - `PasswordResetCompleted` — при успешном сбросе
 
-В текущей реализации события собираются в aggregate root. В production можно подключить event bus (RabbitMQ/Kafka) для реакции на события (отправка email, аудит).
+В текущей реализации события хранятся в памяти. В проде можно подключить очередь событий (RabbitMQ/Kafka) для реакции на события (отправка почты, аудит).
 
-## Ключевые компромиссы (Trade-offs)
+## Ключевые компромиссы
 
-| Решение | Trade-off | Обоснование |
-|---------|-----------|-------------|
-| In-memory rate limiter | Не работает в distributed-сценарии | Достаточно для single-node; в production — Redis |
-| Testcontainers для тестов | Требуют Docker, медленнее unit-тестов | Тестируют реальные SQL-запросы, нет расхождения mock/production |
-| JWT без blacklist | Нельзя отозвать access token до истечения | 15 мин TTL минимизирует окно; для полного logout нужен token blacklist в Redis |
-| Single process | Нет horizontal scaling | Stateless design позволяет масштабировать; rate limiter нужно перенести в Redis |
+1. In-memory rate limiter
+2. Testcontainers для тестов
+3. JWT без блеклистинга
 
-## Следующие шаги для production
+## Следующие шаги для будущей версии
 
-1. **Email-сервис** — отправка reset-ссылок через email (интеграция с SendGrid/SES)
-2. **Redis rate limiter** — distributed rate limiting для multi-node
-3. **Token blacklist** — Redis-backed blacklist для logout/token revocation
-4. **Refresh token rotation** — ротация refresh token при каждом использовании
-5. **OpenTelemetry tracing** — distributed tracing для микросервисной архитектуры
-6. **Database migrations runner** — автоматический запуск миграций при старте (Flyway/node-pg-migrate)
-7. **mTLS** — взаимная аутентификация между сервисами
-8. **Audit log** — персистентный лог доменных событий для compliance
-9. **Account recovery** — дополнительные методы верификации (SMS, TOTP)
-10. **CI/CD pipeline** — автоматические тесты, сканирование уязвимостей, деплой
+1. **Email-сервис** — отправка reset-ссылок через email
+2. **CI/CD** — автоматические тесты, сканирование уязвимостей, деплой
+3. **Redis rate limiter** — рейт лимит с помощью Redis для поддержки масштабирования
+4. **Token blacklist** — поддержка logout пользователя
+5. **Refresh token rotation** — ротация refresh токена при каждом использовании
+6. **Account recovery** — дополнительные методы верификации (SMS, TOTP)

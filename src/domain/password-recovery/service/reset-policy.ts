@@ -1,9 +1,5 @@
 /**
- * Reset Policy — Password Recovery Bounded Context
- *
- * Business rules:
- * - Rate limit: max 3 reset requests per email per hour
- * - Cooldown: minimum 60 seconds between reset requests for same email
+ * Reset Policy for Password Recovery
  */
 export interface ResetPolicy {
   /** Check if a new reset request is allowed for this user */

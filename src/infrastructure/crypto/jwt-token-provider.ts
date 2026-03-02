@@ -6,10 +6,9 @@ const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL = '7d';
 
 /**
- * JWT-based Token Provider (using jose library)
+ * JWT-based Token Provider
  *
  * Issues and verifies JWT tokens using separate secrets for access and refresh.
- * All operations are async (jose uses Web Crypto API under the hood).
  */
 export class JwtTokenProvider implements TokenService {
   private readonly accessKey: Uint8Array;
@@ -21,8 +20,6 @@ export class JwtTokenProvider implements TokenService {
   }
 
   async issueTokenPair(payload: TokenPayload): Promise<AuthTokenPair> {
-    const now = new Date();
-
     const accessToken = await new SignJWT({ userId: payload.userId, email: payload.email, type: 'access' })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
@@ -38,8 +35,6 @@ export class JwtTokenProvider implements TokenService {
     return {
       accessToken,
       refreshToken,
-      accessTokenExpiresAt: new Date(now.getTime() + 15 * 60 * 1000),
-      refreshTokenExpiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
     };
   }
 
