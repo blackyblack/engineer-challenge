@@ -22,9 +22,9 @@ export class ValidateSessionHandler {
     private readonly logger: Logger,
   ) {}
 
-  execute(query: ValidateSessionQuery): SessionInfo {
+  async execute(query: ValidateSessionQuery): Promise<SessionInfo> {
     try {
-      const payload = this.tokenService.verifyAccessToken(query.accessToken);
+      const payload = await this.tokenService.verifyAccessToken(query.accessToken);
       return {
         userId: payload.userId,
         email: payload.email,

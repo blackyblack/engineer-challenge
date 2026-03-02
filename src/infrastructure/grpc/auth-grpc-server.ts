@@ -168,11 +168,11 @@ export function createGrpcServer(deps: GrpcServerDeps): grpc.Server {
       }
     },
 
-    validateSession: (call: any, callback: any) => {
+    validateSession: async (call: any, callback: any) => {
       const timer = authMetrics.grpcRequestDuration.startTimer({ method: 'ValidateSession' });
       try {
         const { accessToken } = call.request;
-        const result = deps.validateSessionHandler.execute({ accessToken });
+        const result = await deps.validateSessionHandler.execute({ accessToken });
         timer({ status: 'success' });
         callback(null, { valid: result.valid, userId: result.userId, email: result.email });
       } catch (error) {

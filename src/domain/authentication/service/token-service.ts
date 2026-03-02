@@ -5,11 +5,12 @@ import { AuthTokenPair, TokenPayload } from '../model/auth-token';
  *
  * Responsible for issuing and verifying JWT tokens.
  * Infrastructure layer provides the implementation.
+ * All methods are async to support modern crypto libraries (e.g. jose).
  */
 export interface TokenService {
-  issueTokenPair(payload: TokenPayload): AuthTokenPair;
-  verifyAccessToken(token: string): TokenPayload;
-  verifyRefreshToken(token: string): TokenPayload;
+  issueTokenPair(payload: TokenPayload): Promise<AuthTokenPair>;
+  verifyAccessToken(token: string): Promise<TokenPayload>;
+  verifyRefreshToken(token: string): Promise<TokenPayload>;
 }
 
 export class InvalidTokenError extends Error {

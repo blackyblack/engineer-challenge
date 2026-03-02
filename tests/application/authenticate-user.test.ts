@@ -1,10 +1,12 @@
 import { AuthenticateUserHandler, InvalidCredentialsError } from '../../src/application/commands/authenticate-user';
 import { RegisterUserHandler } from '../../src/application/commands/register-user';
-import { InMemoryUserRepository } from '../../src/infrastructure/persistence/in-memory-user-repository';
-import { BcryptPasswordHasher } from '../../src/infrastructure/crypto/bcrypt-password-hasher';
+import { PgUserRepository } from '../../src/infrastructure/persistence/pg-user-repository';
+import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/bcrypt-password-hasher';
 import { JwtTokenProvider } from '../../src/infrastructure/crypto/jwt-token-provider';
-import { UserStatus } from '../../src/domain/identity';
+import { Email, UserStatus } from '../../src/domain/identity';
 import { Logger } from '../../src/infrastructure/observability/logger';
+import { Pool } from 'pg';
+import { startPostgres, stopPostgres, cleanTables } from '../setup/testcontainers';
 
 const mockLogger: Logger = {
   info: jest.fn(),
@@ -16,12 +18,22 @@ const mockLogger: Logger = {
 describe('AuthenticateUser Command Handler', () => {
   let authHandler: AuthenticateUserHandler;
   let registerHandler: RegisterUserHandler;
-  let userRepository: InMemoryUserRepository;
-  const passwordHasher = new BcryptPasswordHasher();
+  let userRepository: PgUserRepository;
+  let pool: Pool;
+  const passwordHasher = new Argon2PasswordHasher();
   const tokenService = new JwtTokenProvider('test-access-secret', 'test-refresh-secret');
 
+  beforeAll(async () => {
+    pool = await startPostgres();
+  }, 60_000);
+
+  afterAll(async () => {
+    await stopPostgres();
+  });
+
   beforeEach(async () => {
-    userRepository = new InMemoryUserRepository();
+    await cleanTables(pool);
+    userRepository = new PgUserRepository(pool);
     registerHandler = new RegisterUserHandler(userRepository, passwordHasher, mockLogger);
     authHandler = new AuthenticateUserHandler(userRepository, passwordHasher, tokenService, mockLogger);
 
@@ -61,7 +73,7 @@ describe('AuthenticateUser Command Handler', () => {
       authHandler.execute({ email: 'user@example.com', password: 'Wrong1!' }),
     ).rejects.toThrow();
 
-    const email = (await import('../../src/domain/identity/model/email')).Email.create('user@example.com');
+    const email = Email.create('user@example.com');
     const user = await userRepository.findByEmail(email);
     expect(user!.failedLoginAttempts).toBe(1);
   });
@@ -73,7 +85,7 @@ describe('AuthenticateUser Command Handler', () => {
       ).rejects.toThrow();
     }
 
-    const email = (await import('../../src/domain/identity/model/email')).Email.create('user@example.com');
+    const email = Email.create('user@example.com');
     const user = await userRepository.findByEmail(email);
     expect(user!.status).toBe(UserStatus.LOCKED);
 
@@ -91,7 +103,7 @@ describe('AuthenticateUser Command Handler', () => {
     // Succeed
     await authHandler.execute({ email: 'user@example.com', password: 'TestPass1!' });
 
-    const email = (await import('../../src/domain/identity/model/email')).Email.create('user@example.com');
+    const email = Email.create('user@example.com');
     const user = await userRepository.findByEmail(email);
     expect(user!.failedLoginAttempts).toBe(0);
   });
@@ -102,7 +114,7 @@ describe('AuthenticateUser Command Handler', () => {
       password: 'TestPass1!',
     });
 
-    const payload = tokenService.verifyAccessToken(result.accessToken);
+    const payload = await tokenService.verifyAccessToken(result.accessToken);
     expect(payload.email).toBe('user@example.com');
     expect(payload.userId).toBeDefined();
   });

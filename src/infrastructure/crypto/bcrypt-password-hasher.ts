@@ -1,20 +1,18 @@
-import bcrypt from 'bcryptjs';
+import * as argon2 from 'argon2';
 import { PasswordHasher } from '../../domain/authentication/service/password-hasher';
 
-const SALT_ROUNDS = 12;
-
 /**
- * Bcrypt-based Password Hasher
+ * Argon2-based Password Hasher
  *
- * Uses bcrypt with configurable salt rounds.
- * bcrypt internally uses constant-time comparison.
+ * Uses Argon2id (hybrid variant) — the recommended choice for password hashing.
+ * Argon2id provides resistance against both side-channel and GPU attacks.
  */
-export class BcryptPasswordHasher implements PasswordHasher {
+export class Argon2PasswordHasher implements PasswordHasher {
   async hash(password: string): Promise<string> {
-    return bcrypt.hash(password, SALT_ROUNDS);
+    return argon2.hash(password, { type: argon2.argon2id });
   }
 
   async compare(password: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(password, hash);
+    return argon2.verify(hash, password);
   }
 }

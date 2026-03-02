@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
 import { TokenService, InvalidTokenError } from '../../domain/authentication/service/token-service';
 import { AuthTokenPair, TokenPayload } from '../../domain/authentication/model/auth-token';
 
@@ -6,30 +6,34 @@ const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL = '7d';
 
 /**
- * JWT-based Token Provider
+ * JWT-based Token Provider (using jose library)
  *
  * Issues and verifies JWT tokens using separate secrets for access and refresh.
+ * All operations are async (jose uses Web Crypto API under the hood).
  */
 export class JwtTokenProvider implements TokenService {
-  constructor(
-    private readonly accessSecret: string,
-    private readonly refreshSecret: string,
-  ) {}
+  private readonly accessKey: Uint8Array;
+  private readonly refreshKey: Uint8Array;
 
-  issueTokenPair(payload: TokenPayload): AuthTokenPair {
+  constructor(accessSecret: string, refreshSecret: string) {
+    this.accessKey = new TextEncoder().encode(accessSecret);
+    this.refreshKey = new TextEncoder().encode(refreshSecret);
+  }
+
+  async issueTokenPair(payload: TokenPayload): Promise<AuthTokenPair> {
     const now = new Date();
 
-    const accessToken = jwt.sign(
-      { userId: payload.userId, email: payload.email, type: 'access' },
-      this.accessSecret,
-      { expiresIn: ACCESS_TOKEN_TTL },
-    );
+    const accessToken = await new SignJWT({ userId: payload.userId, email: payload.email, type: 'access' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime(ACCESS_TOKEN_TTL)
+      .sign(this.accessKey);
 
-    const refreshToken = jwt.sign(
-      { userId: payload.userId, email: payload.email, type: 'refresh' },
-      this.refreshSecret,
-      { expiresIn: REFRESH_TOKEN_TTL },
-    );
+    const refreshToken = await new SignJWT({ userId: payload.userId, email: payload.email, type: 'refresh' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime(REFRESH_TOKEN_TTL)
+      .sign(this.refreshKey);
 
     return {
       accessToken,
@@ -39,26 +43,26 @@ export class JwtTokenProvider implements TokenService {
     };
   }
 
-  verifyAccessToken(token: string): TokenPayload {
+  async verifyAccessToken(token: string): Promise<TokenPayload> {
     try {
-      const decoded = jwt.verify(token, this.accessSecret) as jwt.JwtPayload;
-      if (decoded.type !== 'access') {
+      const { payload } = await jwtVerify(token, this.accessKey);
+      if (payload.type !== 'access') {
         throw new InvalidTokenError('Not an access token');
       }
-      return { userId: decoded.userId, email: decoded.email };
+      return { userId: payload.userId as string, email: payload.email as string };
     } catch (error) {
       if (error instanceof InvalidTokenError) throw error;
       throw new InvalidTokenError((error as Error).message);
     }
   }
 
-  verifyRefreshToken(token: string): TokenPayload {
+  async verifyRefreshToken(token: string): Promise<TokenPayload> {
     try {
-      const decoded = jwt.verify(token, this.refreshSecret) as jwt.JwtPayload;
-      if (decoded.type !== 'refresh') {
+      const { payload } = await jwtVerify(token, this.refreshKey);
+      if (payload.type !== 'refresh') {
         throw new InvalidTokenError('Not a refresh token');
       }
-      return { userId: decoded.userId, email: decoded.email };
+      return { userId: payload.userId as string, email: payload.email as string };
     } catch (error) {
       if (error instanceof InvalidTokenError) throw error;
       throw new InvalidTokenError((error as Error).message);

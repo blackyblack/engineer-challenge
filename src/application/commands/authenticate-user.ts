@@ -60,7 +60,7 @@ export class AuthenticateUserHandler {
     user.resetFailedLoginAttempts();
     await this.userRepository.save(user);
 
-    const tokenPair = this.tokenService.issueTokenPair({
+    const tokenPair = await this.tokenService.issueTokenPair({
       userId: user.id,
       email: user.email.value,
     });

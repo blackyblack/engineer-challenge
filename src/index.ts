@@ -6,7 +6,7 @@ import { AuthenticateUserHandler } from './application/commands/authenticate-use
 import { RequestPasswordResetHandler } from './application/commands/request-password-reset';
 import { ResetPasswordHandler } from './application/commands/reset-password';
 import { ValidateSessionHandler } from './application/queries/validate-session';
-import { BcryptPasswordHasher } from './infrastructure/crypto/bcrypt-password-hasher';
+import { Argon2PasswordHasher } from './infrastructure/crypto/bcrypt-password-hasher';
 import { JwtTokenProvider } from './infrastructure/crypto/jwt-token-provider';
 import { PgUserRepository } from './infrastructure/persistence/pg-user-repository';
 import { PgResetTokenRepository } from './infrastructure/persistence/pg-reset-token-repository';
@@ -43,7 +43,7 @@ async function main() {
   const resetPolicy = new InMemoryResetPolicy();
 
   // Services
-  const passwordHasher = new BcryptPasswordHasher();
+  const passwordHasher = new Argon2PasswordHasher();
   const tokenService = new JwtTokenProvider(accessSecret, refreshSecret);
 
   // Command Handlers

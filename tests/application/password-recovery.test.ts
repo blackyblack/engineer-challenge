@@ -2,14 +2,16 @@ import { RequestPasswordResetHandler } from '../../src/application/commands/requ
 import { ResetPasswordHandler } from '../../src/application/commands/reset-password';
 import { RegisterUserHandler } from '../../src/application/commands/register-user';
 import { AuthenticateUserHandler } from '../../src/application/commands/authenticate-user';
-import { InMemoryUserRepository } from '../../src/infrastructure/persistence/in-memory-user-repository';
-import { InMemoryResetTokenRepository } from '../../src/infrastructure/persistence/in-memory-reset-token-repository';
+import { PgUserRepository } from '../../src/infrastructure/persistence/pg-user-repository';
+import { PgResetTokenRepository } from '../../src/infrastructure/persistence/pg-reset-token-repository';
 import { InMemoryResetPolicy } from '../../src/infrastructure/persistence/in-memory-reset-policy';
-import { BcryptPasswordHasher } from '../../src/infrastructure/crypto/bcrypt-password-hasher';
+import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/bcrypt-password-hasher';
 import { JwtTokenProvider } from '../../src/infrastructure/crypto/jwt-token-provider';
 import { ResetTokenNotFoundError, ResetRateLimitExceededError } from '../../src/domain/password-recovery';
 import { WeakPasswordError } from '../../src/domain/identity';
 import { Logger } from '../../src/infrastructure/observability/logger';
+import { Pool } from 'pg';
+import { startPostgres, stopPostgres, cleanTables } from '../setup/testcontainers';
 
 const mockLogger: Logger = {
   info: jest.fn(),
@@ -23,14 +25,24 @@ describe('Password Recovery Flow', () => {
   let resetPasswordHandler: ResetPasswordHandler;
   let registerHandler: RegisterUserHandler;
   let authHandler: AuthenticateUserHandler;
-  let userRepository: InMemoryUserRepository;
-  let resetTokenRepository: InMemoryResetTokenRepository;
-  const passwordHasher = new BcryptPasswordHasher();
+  let userRepository: PgUserRepository;
+  let resetTokenRepository: PgResetTokenRepository;
+  let pool: Pool;
+  const passwordHasher = new Argon2PasswordHasher();
   const tokenService = new JwtTokenProvider('test-access', 'test-refresh');
 
+  beforeAll(async () => {
+    pool = await startPostgres();
+  }, 60_000);
+
+  afterAll(async () => {
+    await stopPostgres();
+  });
+
   beforeEach(async () => {
-    userRepository = new InMemoryUserRepository();
-    resetTokenRepository = new InMemoryResetTokenRepository();
+    await cleanTables(pool);
+    userRepository = new PgUserRepository(pool);
+    resetTokenRepository = new PgResetTokenRepository(pool);
     const resetPolicy = new InMemoryResetPolicy({
       maxRequests: 3,
       windowMs: 60 * 60 * 1000,

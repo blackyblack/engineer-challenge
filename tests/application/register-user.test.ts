@@ -1,8 +1,10 @@
 import { RegisterUserHandler } from '../../src/application/commands/register-user';
-import { InMemoryUserRepository } from '../../src/infrastructure/persistence/in-memory-user-repository';
-import { BcryptPasswordHasher } from '../../src/infrastructure/crypto/bcrypt-password-hasher';
+import { PgUserRepository } from '../../src/infrastructure/persistence/pg-user-repository';
+import { Argon2PasswordHasher } from '../../src/infrastructure/crypto/bcrypt-password-hasher';
 import { DuplicateEmailError, InvalidEmailError, WeakPasswordError } from '../../src/domain/identity';
 import { Logger } from '../../src/infrastructure/observability/logger';
+import { Pool } from 'pg';
+import { startPostgres, stopPostgres, cleanTables } from '../setup/testcontainers';
 
 const mockLogger: Logger = {
   info: jest.fn(),
@@ -13,11 +15,21 @@ const mockLogger: Logger = {
 
 describe('RegisterUser Command Handler', () => {
   let handler: RegisterUserHandler;
-  let userRepository: InMemoryUserRepository;
+  let userRepository: PgUserRepository;
+  let pool: Pool;
 
-  beforeEach(() => {
-    userRepository = new InMemoryUserRepository();
-    handler = new RegisterUserHandler(userRepository, new BcryptPasswordHasher(), mockLogger);
+  beforeAll(async () => {
+    pool = await startPostgres();
+  }, 60_000);
+
+  afterAll(async () => {
+    await stopPostgres();
+  });
+
+  beforeEach(async () => {
+    await cleanTables(pool);
+    userRepository = new PgUserRepository(pool);
+    handler = new RegisterUserHandler(userRepository, new Argon2PasswordHasher(), mockLogger);
   });
 
   it('should register a new user successfully', async () => {
@@ -61,6 +73,6 @@ describe('RegisterUser Command Handler', () => {
 
     const saved = await userRepository.findById(result.userId);
     expect(saved!.passwordHash).not.toBe('Strong1Pass!');
-    expect(saved!.passwordHash).toMatch(/^\$2[aby]\$/); // bcrypt hash prefix
+    expect(saved!.passwordHash).toMatch(/^\$argon2/); // argon2 hash prefix
   });
 });

@@ -9,4 +9,11 @@ module.exports = {
     '^@application/(.*)$': '<rootDir>/src/application/$1',
     '^@infrastructure/(.*)$': '<rootDir>/src/infrastructure/$1',
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!jose/)',
+  ],
+  transform: {
+    '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.jsx?$': ['ts-jest', { tsconfig: { allowJs: true } }],
+  },
 };

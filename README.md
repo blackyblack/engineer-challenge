@@ -54,10 +54,11 @@ kubectl apply -f infra/k8s/auth-module.yaml
 |---------|--------|-------------|
 | **TypeScript** | Строгая типизация, явные интерфейсы для domain ports, широкая экосистема | Go (меньше выразительности для DDD), Rust (overhead для прототипа) |
 | **gRPC** | Строго типизированный контракт (proto), эффективная сериализация, code generation | REST (менее строгий контракт), GraphQL (overkill для auth) |
-| **bcryptjs** | Proven алгоритм с salt и constant-time comparison | argon2 (лучше, но тяжелее в зависимостях), scrypt |
-| **jsonwebtoken** | Стандартный JWT, широко поддерживается | jose (более современный), paseto (менее распространён) |
+| **argon2** | Argon2id — победитель Password Hashing Competition, устойчив к GPU и side-channel атакам | bcrypt (устаревший, но надёжный), scrypt |
+| **jose** | Современная JWT-библиотека, ESM-native, использует Web Crypto API, нет устаревших зависимостей | jsonwebtoken (legacy, не ESM), paseto (менее распространён) |
 | **PostgreSQL** | Надёжное ACID-хранилище, подходит для identity data | MongoDB (нет нужды в document model), SQLite (не для prod) |
 | **Pino** | Быстрый structured logging, JSON-формат для агрегации | Winston (медленнее), Bunyan (устаревший) |
+| **testcontainers** | Тесты с реальной БД, нет расхождения между тестами и production | In-memory mocks (скрывают SQL-ошибки), SQLite (другой диалект) |
 | **prom-client** | Prometheus-native метрики, де-факто стандарт для K8s | StatsD, OpenTelemetry (более тяжёлый) |
 
 ## Архитектура
@@ -150,8 +151,8 @@ src/
 │   ├── commands/                # Command handlers (write side)
 │   └── queries/                 # Query handlers (read side)
 ├── infrastructure/              # Adapters (implementations of ports)
-│   ├── crypto/                  # BcryptPasswordHasher, JwtTokenProvider
-│   ├── persistence/             # InMemory + PostgreSQL repositories
+│   ├── crypto/                  # Argon2PasswordHasher, JwtTokenProvider (jose)
+│   ├── persistence/             # PostgreSQL repositories
 │   ├── grpc/                    # gRPC server (transport adapter)
 │   ├── observability/           # Pino logger, Prometheus metrics
 │   └── rate-limiting/           # InMemoryRateLimiter
@@ -162,7 +163,7 @@ src/
 ### Пароль
 - Минимум 8 символов
 - Обязательно: uppercase, lowercase, цифра, спецсимвол
-- Хранится **только** bcrypt-хеш (12 salt rounds)
+- Хранится **только** Argon2id-хеш (memory-hard, защита от GPU-атак)
 
 ### User Aggregate
 - Email уникален (проверка на уровне repository)
@@ -212,8 +213,8 @@ src/
 
 ## Безопасность
 
-- ✅ Пароли хранятся как bcrypt-хеши (12 rounds)
-- ✅ Separate secrets для access и refresh токенов
+- ✅ Пароли хранятся как Argon2id-хеши (memory-hard, устойчив к GPU и side-channel атакам)
+- ✅ JWT через jose (Web Crypto API, ESM-native, separate secrets для access и refresh)
 - ✅ Rate limiting на все auth-эндпоинты
 - ✅ Блокировка аккаунта при brute force (5 попыток)
 - ✅ Предотвращение email enumeration при password reset
@@ -247,7 +248,9 @@ npm run test:application
 npm run test:integration
 ```
 
-**67 тестов** в 10 test suites:
+**68 тестов** в 10 test suites:
+
+> **Требование**: Docker для application-тестов (testcontainers запускает PostgreSQL)
 
 | Suite | Тесты | Что покрывает |
 |-------|-------|---------------|
@@ -256,11 +259,11 @@ npm run test:integration
 | `user.test.ts` | 9 | User aggregate: регистрация, блокировка, смена пароля |
 | `reset-token.test.ts` | 7 | TTL, одноразовость, криптографическая уникальность |
 | `rate-limiter.test.ts` | 4 | Sliding window, cooldown, expiration |
-| `register-user.test.ts` | 5 | Регистрация, дубликаты, валидация |
-| `authenticate-user.test.ts` | 7 | Логин, блокировка, сброс попыток |
-| `password-recovery.test.ts` | 7 | Полный flow: запрос → сброс → вход |
-| `validate-session.test.ts` | 3 | Проверка JWT, отклонение невалидных |
-| `crypto.test.ts` | 10 | JWT signing/verification, bcrypt |
+| `register-user.test.ts` | 5 | Регистрация, дубликаты, валидация (PostgreSQL via testcontainers) |
+| `authenticate-user.test.ts` | 7 | Логин, блокировка, сброс попыток (PostgreSQL via testcontainers) |
+| `password-recovery.test.ts` | 7 | Полный flow: запрос → сброс → вход (PostgreSQL via testcontainers) |
+| `validate-session.test.ts` | 3 | Проверка JWT (jose), отклонение невалидных |
+| `crypto.test.ts` | 11 | JWT signing/verification (jose), Argon2id hashing |
 
 ## Domain Events
 
@@ -281,7 +284,7 @@ npm run test:integration
 |---------|-----------|-------------|
 | In-memory rate limiter | Не работает в distributed-сценарии | Достаточно для single-node; в production — Redis |
 | Reset token в ответе API | Небезопасно в production | Для демонстрации; в production — только через email |
-| In-memory + PG repositories | Два набора адаптеров | In-memory для тестов без инфраструктуры, PG для production |
+| Testcontainers для тестов | Требуют Docker, медленнее unit-тестов | Тестируют реальные SQL-запросы, нет расхождения mock/production |
 | JWT без blacklist | Нельзя отозвать access token до истечения | 15 мин TTL минимизирует окно; для полного logout нужен token blacklist в Redis |
 | Single process | Нет horizontal scaling | Stateless design позволяет масштабировать; rate limiter нужно перенести в Redis |
 

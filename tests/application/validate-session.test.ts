@@ -17,31 +17,31 @@ describe('ValidateSession Query Handler', () => {
     handler = new ValidateSessionHandler(tokenService, mockLogger);
   });
 
-  it('should validate a valid access token', () => {
-    const tokenPair = tokenService.issueTokenPair({
+  it('should validate a valid access token', async () => {
+    const tokenPair = await tokenService.issueTokenPair({
       userId: 'user-123',
       email: 'test@example.com',
     });
 
-    const result = handler.execute({ accessToken: tokenPair.accessToken });
+    const result = await handler.execute({ accessToken: tokenPair.accessToken });
     expect(result.valid).toBe(true);
     expect(result.userId).toBe('user-123');
     expect(result.email).toBe('test@example.com');
   });
 
-  it('should reject an invalid token', () => {
-    const result = handler.execute({ accessToken: 'invalid-token' });
+  it('should reject an invalid token', async () => {
+    const result = await handler.execute({ accessToken: 'invalid-token' });
     expect(result.valid).toBe(false);
     expect(result.userId).toBe('');
   });
 
-  it('should reject a refresh token used as access token', () => {
-    const tokenPair = tokenService.issueTokenPair({
+  it('should reject a refresh token used as access token', async () => {
+    const tokenPair = await tokenService.issueTokenPair({
       userId: 'user-123',
       email: 'test@example.com',
     });
 
-    const result = handler.execute({ accessToken: tokenPair.refreshToken });
+    const result = await handler.execute({ accessToken: tokenPair.refreshToken });
     expect(result.valid).toBe(false);
   });
 });
