@@ -23,7 +23,7 @@
     "pino": "^8",
     "prom-client": "^15",
     "uuid": "^9",
-    "validator": "^13.15.26"
+    "validator": "^13"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^11",
@@ -31,7 +31,7 @@
     "@types/node": "^20",
     "@types/pg": "^8",
     "@types/uuid": "^9",
-    "@types/validator": "^13.15.10",
+    "@types/validator": "^13",
     "grpc_tools_node_protoc_ts": "^5",
     "grpc-tools": "^1",
     "jest": "^29",

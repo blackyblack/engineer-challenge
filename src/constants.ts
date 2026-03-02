@@ -1,4 +1,4 @@
-import { RateLimiterConfig } from './infrastructure/rate-limiting/rate-limiter';
+import { type RateLimiterConfig } from './infrastructure/rate-limiting/rate-limiter';
 
 /** Identical message for both existing and non-existing emails to prevent enumeration attacks */
 export const PASSWORD_RESET_RESPONSE_MESSAGE = 'Reset link has been sent';
