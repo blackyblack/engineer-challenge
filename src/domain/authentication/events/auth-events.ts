@@ -1,7 +1,5 @@
 import { DomainEvent } from '../../identity/model/user';
 
-// TODO: send events below (they are not emitted yet)
-
 export class UserAuthenticated implements DomainEvent {
   readonly eventType = 'UserAuthenticated';
   constructor(

@@ -12,6 +12,8 @@ import { DomainEvent } from '../../identity/model/user';
  * - A user can have at most one active (unused, non-expired) reset token
  */
 export class ResetToken {
+  public readonly domainEvents: DomainEvent[] = [];
+
   constructor(
     public readonly id: string,
     public readonly userId: string,
@@ -28,7 +30,9 @@ export class ResetToken {
     const token = crypto.randomBytes(32).toString('hex');
     const now = new Date();
     const expiresAt = new Date(now.getTime() + ResetToken.TOKEN_TTL_MS);
-    return new ResetToken(id, userId, token, expiresAt, false, now);
+    const resetToken = new ResetToken(id, userId, token, expiresAt, false, now);
+    resetToken.domainEvents.push(new PasswordResetRequested(id, userId, now));
+    return resetToken;
   }
 
   get used(): boolean {
@@ -51,6 +55,7 @@ export class ResetToken {
       throw new ResetTokenExpiredError(this.id);
     }
     this._used = true;
+    this.domainEvents.push(new PasswordResetCompleted(this.id, this.userId, new Date()));
   }
 }
 
@@ -74,8 +79,6 @@ export class ResetTokenNotFoundError extends Error {
     this.name = 'ResetTokenNotFoundError';
   }
 }
-
-// TODO: Send domain events for reset token lifecycle (requested, completed)
 
 export class PasswordResetRequested implements DomainEvent {
   readonly eventType = 'PasswordResetRequested';

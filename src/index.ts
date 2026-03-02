@@ -11,6 +11,7 @@ import { JwtTokenProvider } from './infrastructure/crypto/jwt-token-provider';
 import { PgUserRepository } from './infrastructure/persistence/pg-user-repository';
 import { PgResetTokenRepository } from './infrastructure/persistence/pg-reset-token-repository';
 import { InMemoryResetPolicy } from './infrastructure/rate-limiting/reset-policy';
+import { InMemoryLoginPolicy } from './infrastructure/rate-limiting/login-policy';
 import { createLogger } from './infrastructure/observability/logger';
 import { metricsRegistry } from './infrastructure/observability/metrics';
 import * as http from 'http';
@@ -41,6 +42,7 @@ async function main() {
   const userRepository = new PgUserRepository(pool);
   const resetTokenRepository = new PgResetTokenRepository(pool);
   const resetPolicy = new InMemoryResetPolicy();
+  const loginPolicy = new InMemoryLoginPolicy();
 
   // Services
   const passwordHasher = new Argon2PasswordHasher();
@@ -48,7 +50,7 @@ async function main() {
 
   // Command Handlers
   const registerHandler = new RegisterUserHandler(userRepository, passwordHasher, logger);
-  const authenticateHandler = new AuthenticateUserHandler(userRepository, passwordHasher, tokenService, logger);
+  const authenticateHandler = new AuthenticateUserHandler(userRepository, passwordHasher, tokenService, loginPolicy, logger);
   const requestPasswordResetHandler = new RequestPasswordResetHandler(userRepository, resetTokenRepository, resetPolicy, logger);
   const resetPasswordHandler = new ResetPasswordHandler(userRepository, resetTokenRepository, passwordHasher, logger);
 
